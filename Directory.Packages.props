@@ -1,0 +1,24 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+
+    <AspNetCoreVersion>10.0.0</AspNetCoreVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Build tooling -->
+    <PackageVersion Include="DotNet.ReproducibleBuilds" Version="2.0.2" />
+    <PackageVersion Include="MinVer" Version="7.0.0" />
+
+    <!-- Runtime -->
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="$(AspNetCoreVersion)" />
+
+    <!-- Testing -->
+    <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
+    <PackageVersion Include="bunit" Version="2.6.2" />
+    <PackageVersion Include="TUnit.Core" Version="1.19.22" />
+    <PackageVersion Include="TUnit.Engine" Version="1.19.22" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,49 @@
+@* src/Spillgebees.Blazor.Docs.Sdk/Components/DocSite.razor *@
+@using Spillgebees.Blazor.Docs.Sdk.Navigation
+
+<div class="doc-site">
+    <header class="doc-topbar">
+        <button class="doc-hamburger" @onclick="@ToggleMobileSidebar" aria-label="Toggle navigation">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+        </button>
+        <span class="doc-topbar-logo">
+            <span role="img">@LogoEmoji</span>
+            <span class="doc-topbar-project-name">@ProjectName</span>
+        </span>
+        <ThemeToggle />
+    </header>
+
+    <div class="doc-body @(_mobileSidebarOpen ? "sidebar-open" : "")">
+        <DocSidebar Navigation="@Navigation" GitHubUrl="@GitHubUrl" />
+
+        <main class="doc-content">
+            @ChildContent
+        </main>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string ProjectName { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string LogoEmoji { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string GitHubUrl { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<NavSection> Navigation { get; set; } = [];
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool _mobileSidebarOpen;
+
+    private void ToggleMobileSidebar() => _mobileSidebarOpen = !_mobileSidebarOpen;
+}

@@ -1,0 +1,19 @@
+{
+  "name": "spillgebees-blazor-docs-sdk-assets",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "build:dev": "vite build --mode development",
+    "build:prod": "vite build --mode production"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "highlightjs-cshtml-razor": "^2.1.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  }
+}

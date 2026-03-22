@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.Build.NoTargets/3.7.134">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ViteOutputDir>../Spillgebees.Blazor.Docs.Sdk/wwwroot</ViteOutputDir>
+    <PnpmBuildScript Condition="'$(Configuration)' == 'Debug'">build:dev</PnpmBuildScript>
+    <PnpmBuildScript Condition="'$(Configuration)' != 'Debug'">build:prod</PnpmBuildScript>
+    <PnpmBuildMarker>obj/pnpm-build.$(Configuration).marker</PnpmBuildMarker>
+  </PropertyGroup>
+
+  <Target
+    Name="PnpmInstall"
+    BeforeTargets="PnpmBuild"
+    Condition="'$(DesignTimeBuild)' != 'true'"
+    Inputs="package.json;pnpm-lock.yaml"
+    Outputs="node_modules/.pnpm/lock.yaml"
+  >
+    <Exec Command="pnpm install --frozen-lockfile" StandardOutputImportance="Low" />
+  </Target>
+
+  <Target
+    Name="PnpmBuild"
+    BeforeTargets="Build"
+    Condition="'$(DesignTimeBuild)' != 'true'"
+    Inputs="src/**/*;vite.config.ts;package.json;pnpm-lock.yaml"
+    Outputs="$(ViteOutputDir)/Spillgebees.Blazor.Docs.Sdk.lib.module.js;$(PnpmBuildMarker)"
+  >
+    <Delete Files="obj/pnpm-build.Debug.marker;obj/pnpm-build.Release.marker" />
+    <Exec Command="pnpm run $(PnpmBuildScript)" StandardOutputImportance="Low" />
+    <Touch Files="$(PnpmBuildMarker)" AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="PnpmClean" AfterTargets="Clean">
+    <RemoveDir Directories="$(ViteOutputDir)" />
+  </Target>
+</Project>

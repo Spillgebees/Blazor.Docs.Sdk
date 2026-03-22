@@ -1,0 +1,48 @@
+<div class="doc-breadcrumb">
+    <span class="doc-breadcrumb-path">
+        <span class="doc-breadcrumb-segment">@Section</span>
+        <span class="doc-breadcrumb-separator">/</span>
+        <span class="doc-breadcrumb-current">@PageName</span>
+    </span>
+    @if (ApiReferenceUrl is not null || SourceUrl is not null || ExamplesUrl is not null)
+    {
+        <span class="doc-breadcrumb-divider">|</span>
+        @if (ApiReferenceUrl is not null)
+        {
+            <a href="@ApiReferenceUrl" class="doc-breadcrumb-link">api_ref</a>
+        }
+        @if (SourceUrl is not null)
+        {
+            if (ApiReferenceUrl is not null)
+            {
+                <span class="doc-breadcrumb-divider">|</span>
+            }
+            <a href="@SourceUrl" class="doc-breadcrumb-link">source</a>
+        }
+        @if (ExamplesUrl is not null)
+        {
+            if (ApiReferenceUrl is not null || SourceUrl is not null)
+            {
+                <span class="doc-breadcrumb-divider">|</span>
+            }
+            <a href="@ExamplesUrl" class="doc-breadcrumb-link">examples</a>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Section { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string PageName { get; set; } = default!;
+
+    [Parameter]
+    public string? ApiReferenceUrl { get; set; }
+
+    [Parameter]
+    public string? SourceUrl { get; set; }
+
+    [Parameter]
+    public string? ExamplesUrl { get; set; }
+}

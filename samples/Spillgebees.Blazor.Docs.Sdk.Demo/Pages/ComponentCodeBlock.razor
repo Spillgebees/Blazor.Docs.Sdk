@@ -1,0 +1,176 @@
+@page "/components/code-block"
+
+<Breadcrumb Section="components" PageName="CodeBlock"
+            ApiReferenceUrl="/api/Spillgebees.Blazor.Docs.Sdk.Components.CodeBlock"
+            SourceUrl="https://github.com/Spillgebees/Blazor.Docs.Sdk/blob/main/src/Spillgebees.Blazor.Docs.Sdk/Components/CodeBlock.razor" />
+<OnThisPage />
+
+<h1>CodeBlock</h1>
+<p>Displays syntax-highlighted code with tabbed multi-file support and a copy-to-clipboard button.</p>
+
+<h2 id="live_example">// live_example</h2>
+<p>Here is a live <code>CodeBlock</code> rendering a small C# snippet:</p>
+
+<CodeBlock Files="@_liveExample" Language="csharp" />
+
+<h2 id="single_file">// single_file</h2>
+<p>Pass a dictionary with a single entry. The key becomes the file label shown above the code.</p>
+
+<CodeBlock Files="@_singleFile" Language="razor" />
+
+<h2 id="multiple_files">// multiple_files</h2>
+<p>When multiple entries are provided, tabs are rendered above the code block. Clicking a tab switches the displayed file.</p>
+
+<CodeBlock Files="@_multipleFiles" Language="razor" />
+
+<h2 id="multi_file_live">// multi_file_live</h2>
+<p>A live example with two files and the collapsible file picker:</p>
+
+<CodeBlock Files="@_twoFileExample" Language="razor" />
+
+<h2 id="many_files">// many_files</h2>
+<p>When there are many files, the tab bar scrolls horizontally. The copy button stays pinned at the right.</p>
+
+<CodeBlock Files="@_manyFiles" Language="csharp" />
+
+<h2 id="language_override">// language_override</h2>
+<p>Set <code>Language</code> to force a specific syntax highlighting grammar. Supported values mirror highlight.js language identifiers: <code>razor</code>, <code>csharp</code>, <code>xml</code>, <code>terminal</code>, <code>json</code>, and more.</p>
+
+<CodeBlock Files="@_languageOverride" Language="razor" />
+
+@code {
+    private static readonly Dictionary<string, string> _liveExample = new()
+    {
+        ["HelloWorld.cs"] = """
+            public class HelloWorld
+            {
+                public string Greet(string name) => $"Hello, {name}!";
+            }
+            """,
+    };
+
+    private static readonly Dictionary<string, string> _singleFile = new()
+    {
+        ["Example.razor"] = """
+            @code {
+                private static readonly Dictionary<string, string> _snippet = new()
+                {
+                    ["Example.razor"] = "<MyComponent />",
+                };
+            }
+
+            <CodeBlock Files="@_snippet" Language="razor" />
+            """,
+    };
+
+    private static readonly Dictionary<string, string> _multipleFiles = new()
+    {
+        ["Example.razor"] = """
+            @code {
+                private static readonly Dictionary<string, string> _snippet = new()
+                {
+                    ["Component.razor"] = "<div>Hello</div>",
+                    ["Component.razor.cs"] = "public partial class Component { }",
+                };
+            }
+
+            <CodeBlock Files="@_snippet" />
+            """,
+    };
+
+    private static readonly Dictionary<string, string> _languageOverride = new()
+    {
+        ["Example.razor"] = """
+            @code {
+                private static readonly Dictionary<string, string> _snippet = new()
+                {
+                    ["terminal"] = "dotnet add package Spillgebees.Blazor.Docs.Sdk",
+                };
+            }
+
+            <CodeBlock Files="@_snippet" Language="terminal" />
+            """,
+    };
+
+    private static readonly Dictionary<string, string> _manyFiles = new()
+    {
+        ["TrainExample.razor"] = """
+            <SgbMap Center="@_center" Zoom="14" Layers="@_layers">
+            </SgbMap>
+
+            @code {
+                private LatLng _center = new(49.6, 6.1);
+                private List<Layer> _layers = [];
+            }
+            """,
+        ["TrainCatalog.cs"] = """
+            public class TrainCatalog
+            {
+                public IReadOnlyList<Train> GetActiveTrains()
+                    => _trains.Where(t => t.IsActive).ToList();
+            }
+            """,
+        ["TrainSimulation.cs"] = """
+            public class TrainSimulation
+            {
+                public async Task RunAsync(CancellationToken ct)
+                {
+                    while (!ct.IsCancellationRequested)
+                    {
+                        UpdatePositions();
+                        await Task.Delay(1000, ct);
+                    }
+                }
+            }
+            """,
+        ["TrainModels.cs"] = """
+            public record Train(string Id, string Name, LatLng Position, bool IsActive);
+            public record Route(string Id, List<LatLng> Stops);
+            public record Station(string Name, LatLng Coordinates);
+            """,
+        ["MapHelpers.cs"] = """
+            public static class MapHelpers
+            {
+                public static LatLngBounds GetBounds(IEnumerable<LatLng> points)
+                    => new(points.Min(p => p.Lat), points.Min(p => p.Lng),
+                           points.Max(p => p.Lat), points.Max(p => p.Lng));
+            }
+            """,
+        ["StationData.cs"] = """
+            public static class StationData
+            {
+                public static readonly Station[] Stations =
+                [
+                    new("Luxembourg", new(49.6, 6.13)),
+                    new("Esch-sur-Alzette", new(49.5, 5.98)),
+                    new("Ettelbruck", new(49.85, 6.1)),
+                ];
+            }
+            """,
+    };
+
+    private static readonly Dictionary<string, string> _twoFileExample = new()
+    {
+        ["CounterExample.razor"] = """
+            <div>
+                <p>Count: @_count</p>
+                <button @onclick="Increment">Increment</button>
+            </div>
+
+            @code {
+                private int _count;
+                private void Increment() => _count++;
+            }
+            """,
+        ["CounterExample.razor.cs"] = """
+            // code-behind is optional for simple components
+            // but useful for complex logic separation
+            namespace Spillgebees.Blazor.Docs.Sdk.Demo.Samples;
+
+            public partial class CounterExample
+            {
+                // additional logic could go here
+            }
+            """,
+    };
+}

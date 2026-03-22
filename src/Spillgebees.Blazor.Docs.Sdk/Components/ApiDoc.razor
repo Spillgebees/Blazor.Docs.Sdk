@@ -1,0 +1,222 @@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.JSInterop
+@using Spillgebees.Blazor.Docs.Sdk.Build
+@using System.Linq
+@inject IJSRuntime JS
+
+@if (TypeInfo is not null)
+{
+    <article class="api-doc">
+        <header class="api-doc-header">
+            <h2 class="api-doc-type-name">@TypeInfo.Name</h2>
+            <div class="api-doc-meta">
+                <span class="api-doc-namespace">@TypeInfo.Namespace</span>
+                <span class="api-doc-kind-badge">@TypeInfo.Kind</span>
+            </div>
+        </header>
+
+        @if (!string.IsNullOrEmpty(TypeInfo.Summary))
+        {
+            <p class="api-doc-summary">@TypeInfo.Summary</p>
+        }
+
+        @if (!string.IsNullOrEmpty(TypeInfo.BaseType) || TypeInfo.Interfaces.Count > 0)
+        {
+            <section class="api-doc-inheritance">
+                <h3>Inheritance</h3>
+                @if (!string.IsNullOrEmpty(TypeInfo.BaseType))
+                {
+                    <div class="api-doc-base-type">
+                        <span>Base type: </span><code>@TypeInfo.BaseType</code>
+                    </div>
+                }
+                @if (TypeInfo.Interfaces.Count > 0)
+                {
+                    <div class="api-doc-interfaces">
+                        <span>Implements: </span>
+                        @foreach (var iface in TypeInfo.Interfaces)
+                        {
+                            <code>@iface</code>
+                        }
+                    </div>
+                }
+            </section>
+        }
+
+        @if (TypeInfo.GenericParameters.Count > 0)
+        {
+            <section class="api-doc-generic-parameters">
+                <h3>Type Parameters</h3>
+                <ul>
+                    @foreach (var param in TypeInfo.GenericParameters)
+                    {
+                        <li>
+                            <code>@param.Name</code>
+                            @if (param.Constraints.Count > 0)
+                            {
+                                <span> where </span>
+                                @foreach (var constraint in param.Constraints)
+                                {
+                                    <code>@constraint</code>
+                                }
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+
+        @if (TypeInfo.Properties.Count > 0)
+        {
+            <section class="api-doc-section">
+                <button class="api-doc-section-toggle" @onclick="@(() => ToggleSection("properties"))">
+                    // parameters <span class="api-doc-section-indicator">@(IsSectionOpen("properties") ? "−" : "+")</span>
+                </button>
+                @if (IsSectionOpen("properties"))
+                {
+                    <div class="api-doc-definitions">
+                        @foreach (var prop in TypeInfo.Properties)
+                        {
+                            <div class="api-doc-definition">
+                                <div class="api-doc-definition-name">@prop.Name</div>
+                                <div class="api-doc-definition-meta">
+                                    <span class="api-doc-definition-type">@prop.Type</span>
+                                    @if (prop.IsParameter)
+                                    {
+                                        <span class="api-doc-badge-required">required</span>
+                                    }
+                                    @if (prop.DefaultValue is not null)
+                                    {
+                                        <span class="api-doc-default-value">= @prop.DefaultValue</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrEmpty(prop.Summary))
+                                {
+                                    <p class="api-doc-definition-desc">@prop.Summary</p>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+        }
+
+        @if (TypeInfo.Methods.Count > 0)
+        {
+            <section class="api-doc-section">
+                <button class="api-doc-section-toggle" @onclick="@(() => ToggleSection("methods"))">
+                    // methods <span class="api-doc-section-indicator">@(IsSectionOpen("methods") ? "−" : "+")</span>
+                </button>
+                @if (IsSectionOpen("methods"))
+                {
+                    <div class="api-doc-definitions">
+                        @foreach (var method in TypeInfo.Methods)
+                        {
+                            var sig = $"{method.ReturnType} {method.Name}({string.Join(", ", method.Parameters.Select(p => $"{p.Type} {p.Name}"))})";
+                            <div class="api-doc-definition api-doc-method-def">
+                                <div class="api-doc-method-signature">
+                                    <pre><code class="language-csharp">@sig</code></pre>
+                                </div>
+                                @if (!string.IsNullOrEmpty(method.Summary))
+                                {
+                                    <p class="api-doc-definition-desc">@method.Summary</p>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+        }
+
+        @if (TypeInfo.Events.Count > 0)
+        {
+            <section class="api-doc-section">
+                <button class="api-doc-section-toggle" @onclick="@(() => ToggleSection("events"))">
+                    // events <span class="api-doc-section-indicator">@(IsSectionOpen("events") ? "−" : "+")</span>
+                </button>
+                @if (IsSectionOpen("events"))
+                {
+                    <div class="api-doc-definitions">
+                        @foreach (var evt in TypeInfo.Events)
+                        {
+                            <div class="api-doc-definition">
+                                <div class="api-doc-definition-name">@evt.Name</div>
+                                <div class="api-doc-definition-meta">
+                                    <span class="api-doc-definition-type">@evt.Type</span>
+                                </div>
+                                @if (!string.IsNullOrEmpty(evt.Summary))
+                                {
+                                    <p class="api-doc-definition-desc">@evt.Summary</p>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+        }
+
+        @if (TypeInfo.EnumValues.Count > 0)
+        {
+            <section class="api-doc-enum-values">
+                <h3>Values</h3>
+                <table class="api-doc-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Value</th>
+                            <th>Summary</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var enumVal in TypeInfo.EnumValues)
+                        {
+                            <tr>
+                                <td>@enumVal.Name</td>
+                                <td>@enumVal.Value</td>
+                                <td>@enumVal.Summary</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </section>
+        }
+    </article>
+}
+
+@code {
+    [Parameter]
+    public ApiTypeInfo? TypeInfo { get; set; }
+
+    [Parameter]
+    public Type? Type { get; set; }
+
+    private readonly HashSet<string> _collapsedSections = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("Spillgebees.DocsSdk.highlightAll");
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (TypeInfo is not null || Type is null) return;
+
+        var assembly = Type.Assembly;
+        var resourceName = $"ApiManifest:{assembly.GetName().Name}";
+        using var stream = assembly.GetManifestResourceStream(resourceName);
+        if (stream is null) return;
+
+        var manifest = System.Text.Json.JsonSerializer.Deserialize<ApiManifest>(stream);
+        TypeInfo = manifest?.Types.FirstOrDefault(t => t.FullName == (Type.FullName ?? Type.Name));
+    }
+
+    private void ToggleSection(string sectionName)
+    {
+        if (!_collapsedSections.Add(sectionName))
+        {
+            _collapsedSections.Remove(sectionName);
+        }
+    }
+
+    private bool IsSectionOpen(string sectionName) => !_collapsedSections.Contains(sectionName);
+}

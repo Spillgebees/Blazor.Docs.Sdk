@@ -1,0 +1,104 @@
+name: Build & test
+
+permissions: {}
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      HUSKY: 0
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: src/Spillgebees.Blazor.Docs.Sdk.Assets/package.json
+
+      - name: setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: src/Spillgebees.Blazor.Docs.Sdk.Assets/pnpm-lock.yaml
+
+      - name: setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: restore packages
+        run: dotnet restore Blazor.Docs.Sdk.slnx
+
+      - name: build
+        run: dotnet build --configuration Release --no-restore Blazor.Docs.Sdk.slnx
+
+      - name: test
+        run: dotnet test --configuration Release --no-build --project tests/Spillgebees.Blazor.Docs.Sdk.Tests/Spillgebees.Blazor.Docs.Sdk.Tests.csproj
+
+  deploy-docs:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      HUSKY: 0
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: src/Spillgebees.Blazor.Docs.Sdk.Assets/package.json
+
+      - name: setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: src/Spillgebees.Blazor.Docs.Sdk.Assets/pnpm-lock.yaml
+
+      - name: setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: publish demo
+        run: dotnet publish samples/Spillgebees.Blazor.Docs.Sdk.Demo/Spillgebees.Blazor.Docs.Sdk.Demo.csproj -c Release -o publish
+
+      - name: fix base href
+        run: sed -i 's|<base href="/" />|<base href="/Blazor.Docs.Sdk/" />|g' publish/wwwroot/index.html
+
+      - name: add .nojekyll
+        run: touch publish/wwwroot/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: publish/wwwroot
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

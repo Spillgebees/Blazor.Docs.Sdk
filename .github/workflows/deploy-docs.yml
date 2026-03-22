@@ -1,0 +1,58 @@
+name: Deploy Docs to GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      docs-project-path:
+        description: "Path to the Blazor WASM docs project (e.g., src/Docs/Docs.csproj)"
+        required: true
+        type: string
+      base-href:
+        description: "Base href for GitHub Pages (e.g., /Blazor.Map/)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - run: dotnet publish ${{ inputs.docs-project-path }} -c Release -o publish
+        env:
+          HUSKY: "0"
+
+      - name: Fix base href
+        run: sed -i "s|<base href=\"/\" />|<base href=\"${{ inputs.base-href }}\" />|g" publish/wwwroot/index.html
+
+      - name: Add .nojekyll
+        run: touch publish/wwwroot/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: publish/wwwroot
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

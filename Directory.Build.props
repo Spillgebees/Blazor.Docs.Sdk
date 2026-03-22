@@ -1,0 +1,14 @@
+<!--
+  Directory.Build.props — auto-imported by MSBuild for every project in the directory tree.
+  Provides baseline defaults that apply to ALL projects (including tests, samples, tools).
+
+  Opinionated build settings (TreatWarningsAsErrors, MinVer, ReproducibleBuilds) live in
+  General.targets and are imported explicitly per-project.
+-->
+<Project>
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+</Project>

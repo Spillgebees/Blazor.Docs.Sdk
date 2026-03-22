@@ -1,0 +1,77 @@
+@page "/installation"
+
+<OnThisPage />
+
+<h1>Installation</h1>
+
+<p>Follow these steps to set up a documentation site using <code>Spillgebees.Blazor.Docs.Sdk</code>.</p>
+
+<h2 id="add_nuget_package">1. Add NuGet Package</h2>
+
+<p>Run the following command in your project directory:</p>
+
+<CodeBlock Files="@_nuget" Language="terminal" />
+
+<h2 id="reference_in_csproj">2. Reference in .csproj</h2>
+
+<p>The package reference will be added to your project file:</p>
+
+<CodeBlock Files="@_csproj" Language="xml" />
+
+<h2 id="set_up_mainlayout">3. Set Up MainLayout.razor</h2>
+
+<p>Replace the contents of <code>MainLayout.razor</code> with a <code>DocSite</code> wrapper:</p>
+
+<CodeBlock Files="@_layout" Language="razor" />
+
+<h2 id="add_css_link">4. Add CSS Link to index.html</h2>
+
+<p>Add the stylesheet link to the <code>&lt;head&gt;</code> of your <code>wwwroot/index.html</code>:</p>
+
+<CodeBlock Files="@_css" Language="html" />
+
+@code {
+    private static readonly Dictionary<string, string> _nuget = new()
+    {
+        ["terminal"] = "dotnet add package Spillgebees.Blazor.Docs.Sdk",
+    };
+
+    private static readonly Dictionary<string, string> _csproj = new()
+    {
+        ["MyDocs.csproj"] = """
+            <ItemGroup>
+                <PackageReference Include="Spillgebees.Blazor.Docs.Sdk" Version="*" />
+            </ItemGroup>
+            """,
+    };
+
+    private static readonly Dictionary<string, string> _layout = new()
+    {
+        ["MainLayout.razor"] = """
+            @inherits LayoutComponentBase
+
+            <DocSite ProjectName="My Project"
+                     LogoEmoji="🚀"
+                     GitHubUrl="https://github.com/my-org/my-project"
+                     Navigation="@Navigation">
+                @Body
+            </DocSite>
+
+            @code {
+                private static readonly NavSection[] Navigation =
+                [
+                    new("Getting Started", [
+                        new NavPage("Home", "/home"),
+                    ]),
+                ];
+            }
+            """,
+    };
+
+    private static readonly Dictionary<string, string> _css = new()
+    {
+        ["index.html"] = """
+            <link rel="stylesheet" href="_content/Spillgebees.Blazor.Docs.Sdk/docs-sdk.css" />
+            """,
+    };
+}

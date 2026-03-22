@@ -1,0 +1,26 @@
+<!--
+  General.targets — imported explicitly per-project via <Import Project="../General.targets" />.
+  Sets the target framework, enables strict warnings, and includes shared build packages.
+
+  Directory.Build.props provides baseline defaults (Nullable, ImplicitUsings, LangVersion)
+  that apply to ALL projects automatically via MSBuild traversal. This file adds the
+  opinionated settings (TreatWarningsAsErrors, MinVer, ReproducibleBuilds) that only
+  apply to projects that explicitly opt in.
+
+  The Nullable/ImplicitUsings overlap with Directory.Build.props is intentional —
+  General.targets must be self-contained for repos that don't use Directory.Build.props.
+-->
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>1701;1702</NoWarn>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotNet.ReproducibleBuilds" PrivateAssets="All" />
+    <PackageReference Include="MinVer" PrivateAssets="All" />
+  </ItemGroup>
+</Project>

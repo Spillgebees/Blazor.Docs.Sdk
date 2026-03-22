@@ -1,0 +1,37 @@
+<Project>
+  <!--
+    These targets run in consuming projects that reference the Spillgebees.Blazor.Docs.Sdk package.
+    They extract source code for ExampleView components and generate API manifests
+    from referenced library assemblies.
+  -->
+
+  <PropertyGroup>
+    <DocsSdkSourceExtractorEnabled Condition="'$(DocsSdkSourceExtractorEnabled)' == ''"
+      >true</DocsSdkSourceExtractorEnabled
+    >
+    <DocsSdkApiManifestEnabled Condition="'$(DocsSdkApiManifestEnabled)' == ''">true</DocsSdkApiManifestEnabled>
+  </PropertyGroup>
+
+  <Target
+    Name="DocsSdk_ExtractSources"
+    BeforeTargets="BeforeCompile"
+    Condition="'$(DocsSdkSourceExtractorEnabled)' == 'true'"
+  >
+    <Message
+      Importance="normal"
+      Text="[Docs SDK] Source extraction target registered. Implementation pending build-tool integration."
+    />
+  </Target>
+
+  <Target
+    Name="DocsSdk_GenerateApiManifest"
+    AfterTargets="ResolveProjectReferences"
+    BeforeTargets="BeforeCompile"
+    Condition="'$(DocsSdkApiManifestEnabled)' == 'true'"
+  >
+    <Message
+      Importance="normal"
+      Text="[Docs SDK] API manifest generation target registered. Implementation pending build-tool integration."
+    />
+  </Target>
+</Project>

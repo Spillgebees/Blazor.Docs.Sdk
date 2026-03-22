@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference
+      Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer"
+      Condition="'$(Configuration)' == 'Debug'"
+    />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource
+      Include="Samples/CounterExample.razor"
+      LogicalName="SourceEmbed:Spillgebees.Blazor.Docs.Sdk.Demo.Samples.CounterExample:CounterExample.razor"
+    />
+    <EmbeddedResource
+      Include="Samples/HelloWorldExample.razor"
+      LogicalName="SourceEmbed:Spillgebees.Blazor.Docs.Sdk.Demo.Samples.HelloWorldExample:HelloWorldExample.razor"
+    />
+  </ItemGroup>
+</Project>

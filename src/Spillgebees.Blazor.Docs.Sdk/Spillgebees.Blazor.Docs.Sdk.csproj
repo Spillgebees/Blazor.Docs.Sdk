@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <Import Project="../General.targets" />
+
+  <PropertyGroup>
+    <Authors>Jason Rebelo Neves (igotinfected)</Authors>
+    <Company>Spillgebees</Company>
+    <Description>Shared SDK for building documentation sites for Spillgebees Blazor component libraries.</Description>
+    <PackageTags>blazor;blazor-wasm;documentation;docs;razor-class-library</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RepositoryUrl>https://github.com/Spillgebees/Blazor.Docs.Sdk</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/Spillgebees/Blazor.Docs.Sdk</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Spillgebees.Blazor.Docs.Sdk.targets" Pack="true" PackagePath="buildTransitive/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference
+      Include="..\Spillgebees.Blazor.Docs.Sdk.Assets\Spillgebees.Blazor.Docs.Sdk.Assets.csproj"
+      ReferenceOutputAssembly="false"
+      Private="false"
+    />
+  </ItemGroup>
+
+  <Target
+    Name="IncludeViteBuildOutputs"
+    BeforeTargets="ResolveProjectStaticWebAssets"
+    DependsOnTargets="ResolveProjectReferences"
+  >
+    <ItemGroup>
+      <Content Remove="wwwroot\**" />
+      <Content
+        Include="wwwroot\**"
+        Condition="Exists('$(MSBuildProjectDirectory)\wwwroot')"
+        ExcludeFromSingleFile="true"
+        CopyToPublishDirectory="PreserveNewest"
+        Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)"
+      />
+      <_ContentIncludedByDefault Remove="wwwroot\**" />
+      <_ContentIncludedByDefault Include="wwwroot\**" Condition="Exists('$(MSBuildProjectDirectory)\wwwroot')" />
+    </ItemGroup>
+  </Target>
+</Project>

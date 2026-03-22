@@ -1,0 +1,140 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<div class="code-block">
+    <div class="code-block-bar">
+        <div class="code-block-tabs">
+            @foreach (var fileName in VisibleFiles)
+            {
+                var file = fileName;
+                <button class="code-block-tab @(file == _activeFile ? "active" : "")"
+                        @onclick="@(() => SetActiveFile(file))">
+                    @file
+                </button>
+            }
+        </div>
+        @if (OverflowFiles.Count > 0)
+        {
+            <div class="code-block-overflow">
+                <button class="code-block-overflow-toggle @(IsOverflowFileActive ? "active" : "")"
+                        @onclick="@(() => _overflowOpen = !_overflowOpen)">
+                    @if (IsOverflowFileActive)
+                    {
+                        <span>@_activeFile</span>
+                    }
+                    else
+                    {
+                        <span>+@OverflowFiles.Count more</span>
+                    }
+                    <span class="code-block-overflow-arrow">@(_overflowOpen ? "▴" : "▾")</span>
+                </button>
+                @if (_overflowOpen)
+                {
+                    <div class="code-block-overflow-dropdown">
+                        @foreach (var fileName in OverflowFiles)
+                        {
+                            var file = fileName;
+                            <button class="code-block-overflow-item @(file == _activeFile ? "active" : "")"
+                                    @onclick="@(() => SelectOverflowFile(file))">
+                                @file
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        <button class="code-block-copy @(_copied ? "copied" : "")" @onclick="@CopyActiveFile" aria-label="Copy code">
+            @(_copied ? "ok" : "cp")
+        </button>
+    </div>
+    <div class="code-block-content">
+        <pre @key="@_activeFile"><code @ref="@_codeRef" class="@GetLanguageClass()">@Files[_activeFile]</code></pre>
+    </div>
+</div>
+
+@code {
+    private const int MaxVisibleTabs = 3;
+
+    [Parameter, EditorRequired]
+    public IReadOnlyDictionary<string, string> Files { get; set; } = new Dictionary<string, string>();
+
+    [Parameter]
+    public string? Language { get; set; }
+
+    private string _activeFile = "";
+    private bool _copied;
+    private bool _overflowOpen;
+    private ElementReference _codeRef;
+
+    private IReadOnlyList<string> VisibleFiles =>
+        Files.Count <= MaxVisibleTabs + 1
+            ? Files.Keys.ToList()
+            : Files.Keys.Take(MaxVisibleTabs).ToList();
+
+    private IReadOnlyList<string> OverflowFiles =>
+        Files.Count <= MaxVisibleTabs + 1
+            ? []
+            : Files.Keys.Skip(MaxVisibleTabs).ToList();
+
+    private bool IsOverflowFileActive => OverflowFiles.Contains(_activeFile);
+
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrEmpty(_activeFile) || !Files.ContainsKey(_activeFile))
+        {
+            _activeFile = Files.Keys.FirstOrDefault() ?? "";
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("Spillgebees.DocsSdk.highlightElement", _codeRef);
+    }
+
+    private void SetActiveFile(string fileName)
+    {
+        _activeFile = fileName;
+    }
+
+    private void SelectOverflowFile(string fileName)
+    {
+        _activeFile = fileName;
+        _overflowOpen = false;
+    }
+
+    private string GetLanguageClass()
+    {
+        if (string.IsNullOrEmpty(Language))
+        {
+            return "";
+        }
+
+        return Language.ToLowerInvariant() switch
+        {
+            "razor" or "cshtml" => "language-cshtml-razor",
+            "csharp" or "cs" or "c#" => "language-csharp",
+            "xml" or "csproj" => "language-xml",
+            "html" => "language-html",
+            "css" => "language-css",
+            "json" => "language-json",
+            "js" or "javascript" => "language-javascript",
+            "bash" or "shell" or "terminal" => "language-bash",
+            _ => $"language-{Language.ToLowerInvariant()}",
+        };
+    }
+
+    private async Task CopyActiveFile()
+    {
+        if (!Files.TryGetValue(_activeFile, out var content))
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("Spillgebees.DocsSdk.copyToClipboard", content);
+        _copied = true;
+        StateHasChanged();
+        await Task.Delay(1500);
+        _copied = false;
+        StateHasChanged();
+    }
+}

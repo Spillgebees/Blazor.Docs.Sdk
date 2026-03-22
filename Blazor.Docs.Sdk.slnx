@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.csproj" />
+    <Project Path="src/Spillgebees.Blazor.Docs.Sdk.Assets/Spillgebees.Blazor.Docs.Sdk.Assets.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Spillgebees.Blazor.Docs.Sdk.Tests/Spillgebees.Blazor.Docs.Sdk.Tests.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Spillgebees.Blazor.Docs.Sdk.Demo/Spillgebees.Blazor.Docs.Sdk.Demo.csproj" />
+  </Folder>
+  <Folder Name="/.files/">
+    <File Path=".csharpierrc.yaml" />
+    <File Path="Directory.Solution.targets" />
+    <File Path="src/.editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="src/General.targets" />
+    <File Path="global.json" />
+    <File Path="NuGet.config" />
+  </Folder>
+</Solution>

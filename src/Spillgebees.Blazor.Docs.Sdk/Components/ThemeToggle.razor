@@ -1,0 +1,26 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+<button class="theme-toggle" @onclick="@Toggle" aria-label="Toggle theme">
+    <span class="theme-toggle-label">theme:@(_isDark ? "dark" : "light")</span>
+</button>
+
+@code {
+    private bool _isDark = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var theme = await JS.InvokeAsync<string>("Spillgebees.DocsSdk.getTheme");
+            _isDark = theme != "light";
+            StateHasChanged();
+        }
+    }
+
+    private async Task Toggle()
+    {
+        _isDark = !_isDark;
+        await JS.InvokeVoidAsync("Spillgebees.DocsSdk.setTheme", _isDark ? "dark" : "light");
+    }
+}

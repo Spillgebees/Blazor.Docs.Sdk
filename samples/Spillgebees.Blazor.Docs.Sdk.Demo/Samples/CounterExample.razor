@@ -1,0 +1,10 @@
+<div>
+    <p>Count: @_count</p>
+    <button @onclick="Increment">Increment</button>
+</div>
+
+@code {
+    private int _count;
+
+    private void Increment() => _count++;
+}

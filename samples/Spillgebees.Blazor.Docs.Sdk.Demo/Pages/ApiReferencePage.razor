@@ -1,0 +1,163 @@
+@page "/api/{TypeFullName}"
+
+@if (_typeInfo is not null)
+{
+    <Breadcrumb Section="api" PageName="@_typeInfo.Name"
+                ExamplesUrl="@_examplesUrl" />
+    <ApiDoc TypeInfo="@_typeInfo" />
+}
+else
+{
+    <h1>Type not found</h1>
+    <p>No API documentation available for <code>@TypeFullName</code>.</p>
+}
+
+@code {
+    [Parameter]
+    public string TypeFullName { get; set; } = "";
+
+    private ApiTypeInfo? _typeInfo;
+    private string? _examplesUrl;
+
+    private static readonly Dictionary<string, ApiTypeInfo> _types = BuildTypeMap();
+
+    private static readonly Dictionary<string, string> _examplesUrls = new()
+    {
+        ["Spillgebees.Blazor.Docs.Sdk.Components.DocSite"] = "/components/doc-site",
+        ["Spillgebees.Blazor.Docs.Sdk.Components.ExampleView"] = "/components/example-view",
+        ["Spillgebees.Blazor.Docs.Sdk.Components.CodeBlock"] = "/components/code-block",
+        ["Spillgebees.Blazor.Docs.Sdk.Components.ApiDoc"] = "/components/api-doc",
+        ["Spillgebees.Blazor.Docs.Sdk.Components.ThemeToggle"] = "/components/theme-toggle",
+    };
+
+    protected override void OnParametersSet()
+    {
+        _types.TryGetValue(TypeFullName, out _typeInfo);
+        _examplesUrls.TryGetValue(TypeFullName, out _examplesUrl);
+    }
+
+    private static Dictionary<string, ApiTypeInfo> BuildTypeMap()
+    {
+        var types = new Dictionary<string, ApiTypeInfo>();
+
+        AddType(types, new ApiTypeInfo
+        {
+            Name = "DocSite",
+            FullName = "Spillgebees.Blazor.Docs.Sdk.Components.DocSite",
+            Namespace = "Spillgebees.Blazor.Docs.Sdk.Components",
+            Kind = "component",
+            Summary = "Root layout component that wraps the entire docs site with a top bar, sidebar, content area, and footer.",
+            Properties =
+            [
+                new ApiPropertyInfo { Name = "ProjectName", Type = "string", Summary = "The name of the project displayed in the top bar and page title." },
+                new ApiPropertyInfo { Name = "LogoEmoji", Type = "string", Summary = "An emoji used as the site logo in the top bar." },
+                new ApiPropertyInfo { Name = "GitHubUrl", Type = "string", Summary = "URL to the GitHub repository, shown as a link in the footer." },
+                new ApiPropertyInfo { Name = "Navigation", Type = "IReadOnlyList<NavSection>", Summary = "Hierarchical navigation sections rendered in the sidebar." },
+                new ApiPropertyInfo { Name = "ChildContent", Type = "RenderFragment", Summary = "The page content rendered in the main content area." },
+            ],
+        });
+
+        AddType(types, new ApiTypeInfo
+        {
+            Name = "ExampleView",
+            FullName = "Spillgebees.Blazor.Docs.Sdk.Components.ExampleView",
+            Namespace = "Spillgebees.Blazor.Docs.Sdk.Components",
+            Kind = "component",
+            Summary = "Renders a live Blazor component alongside its syntax-highlighted source code, extracted automatically at build time. Composes a CodeBlock internally for the source view.",
+            Properties =
+            [
+                new ApiPropertyInfo { Name = "TComponent", Type = "type parameter (IComponent)", Summary = "The component type whose embedded source is loaded and displayed.", IsParameter = true },
+                new ApiPropertyInfo { Name = "ChildContent", Type = "RenderFragment", Summary = "The live component instance rendered in the preview pane." },
+                new ApiPropertyInfo { Name = "AdditionalSources", Type = "Type[]?", Summary = "Optional additional component types whose source files are included in the code block.", DefaultValue = "null" },
+            ],
+        });
+
+        AddType(types, new ApiTypeInfo
+        {
+            Name = "CodeBlock",
+            FullName = "Spillgebees.Blazor.Docs.Sdk.Components.CodeBlock",
+            Namespace = "Spillgebees.Blazor.Docs.Sdk.Components",
+            Kind = "component",
+            Summary = "Displays syntax-highlighted code with tabbed multi-file support and a copy-to-clipboard button.",
+            Properties =
+            [
+                new ApiPropertyInfo { Name = "Files", Type = "IReadOnlyDictionary<string, string>", Summary = "A dictionary mapping filenames (tab labels) to their content. When multiple files are provided, tabs are rendered above the code." },
+                new ApiPropertyInfo { Name = "Language", Type = "string?", Summary = "Optional language identifier for syntax highlighting. Supports any highlight.js language identifier.", DefaultValue = "null" },
+            ],
+        });
+
+        AddType(types, new ApiTypeInfo
+        {
+            Name = "ApiDoc",
+            FullName = "Spillgebees.Blazor.Docs.Sdk.Components.ApiDoc",
+            Namespace = "Spillgebees.Blazor.Docs.Sdk.Components",
+            Kind = "component",
+            Summary = "Renders auto-generated API documentation for a type, showing properties, methods, events, and enum values.",
+            Properties =
+            [
+                new ApiPropertyInfo { Name = "TypeInfo", Type = "ApiTypeInfo?", Summary = "Pre-loaded API type information object. Takes precedence over Type when provided.", DefaultValue = "null" },
+                new ApiPropertyInfo { Name = "Type", Type = "Type?", Summary = "A System.Type used to look up the generated API manifest embedded in the assembly at build time.", DefaultValue = "null" },
+            ],
+        });
+
+        AddType(types, new ApiTypeInfo
+        {
+            Name = "ThemeToggle",
+            FullName = "Spillgebees.Blazor.Docs.Sdk.Components.ThemeToggle",
+            Namespace = "Spillgebees.Blazor.Docs.Sdk.Components",
+            Kind = "component",
+            Summary = "Dark/light mode toggle button that persists the user preference to localStorage. Included automatically by DocSite in the top bar.",
+            Properties = [],
+        });
+
+        AddType(types, new ApiTypeInfo
+        {
+            Name = "Breadcrumb",
+            FullName = "Spillgebees.Blazor.Docs.Sdk.Components.Breadcrumb",
+            Namespace = "Spillgebees.Blazor.Docs.Sdk.Components",
+            Kind = "component",
+            Summary = "Renders a breadcrumb path with optional links to the API reference, source code, and examples pages.",
+            Properties =
+            [
+                new ApiPropertyInfo { Name = "Section", Type = "string", Summary = "The parent section label shown as the first segment of the breadcrumb path." },
+                new ApiPropertyInfo { Name = "PageName", Type = "string", Summary = "The current page label shown as the last segment of the breadcrumb path." },
+                new ApiPropertyInfo { Name = "ApiReferenceUrl", Type = "string?", Summary = "Optional URL to the API reference page for this component.", DefaultValue = "null" },
+                new ApiPropertyInfo { Name = "SourceUrl", Type = "string?", Summary = "Optional URL to the source code for this component.", DefaultValue = "null" },
+                new ApiPropertyInfo { Name = "ExamplesUrl", Type = "string?", Summary = "Optional URL to the examples page for this component.", DefaultValue = "null" },
+            ],
+        });
+
+        AddType(types, new ApiTypeInfo
+        {
+            Name = "NavPage",
+            FullName = "Spillgebees.Blazor.Docs.Sdk.Navigation.NavPage",
+            Namespace = "Spillgebees.Blazor.Docs.Sdk.Navigation",
+            Kind = "record",
+            Summary = "Represents a single page entry in the sidebar navigation.",
+            Properties =
+            [
+                new ApiPropertyInfo { Name = "Title", Type = "string", Summary = "Display title for the nav link." },
+                new ApiPropertyInfo { Name = "Href", Type = "string", Summary = "URL path for the nav link." },
+            ],
+        });
+
+        AddType(types, new ApiTypeInfo
+        {
+            Name = "NavSection",
+            FullName = "Spillgebees.Blazor.Docs.Sdk.Navigation.NavSection",
+            Namespace = "Spillgebees.Blazor.Docs.Sdk.Navigation",
+            Kind = "record",
+            Summary = "Represents a collapsible section in the sidebar containing navigation pages.",
+            Properties =
+            [
+                new ApiPropertyInfo { Name = "Title", Type = "string", Summary = "Section heading displayed in the sidebar." },
+                new ApiPropertyInfo { Name = "Pages", Type = "IReadOnlyList<NavPage>", Summary = "Pages within this section." },
+            ],
+        });
+
+        return types;
+    }
+
+    private static void AddType(Dictionary<string, ApiTypeInfo> types, ApiTypeInfo info) =>
+        types[info.FullName] = info;
+}

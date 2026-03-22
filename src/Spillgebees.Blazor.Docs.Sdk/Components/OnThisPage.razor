@@ -1,0 +1,53 @@
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+
+@if (_sections.Count > 0)
+{
+    <div class="doc-on-this-page">
+        <button class="doc-on-this-page-toggle" @onclick="@ToggleOpen">
+            <span>// on_this_page</span>
+            <span class="doc-on-this-page-indicator">@(_isOpen ? "−" : "+")</span>
+        </button>
+        @if (_isOpen)
+        {
+            <div class="doc-on-this-page-dropdown">
+                @foreach (var item in _sections)
+                {
+                    var id = item.Id;
+                    <button class="doc-on-this-page-link" @onclick="@(() => ScrollTo(id))">
+                        @item.Title
+                    </button>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<OnThisPageSection> _sections = [];
+    private bool _isOpen;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var sections = await JS.InvokeAsync<OnThisPageSection[]>(
+                "Spillgebees.DocsSdk.getSections"
+            );
+
+            if (sections.Length > 0)
+            {
+                _sections = [.. sections];
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task ScrollTo(string id)
+    {
+        _isOpen = false;
+        await JS.InvokeVoidAsync("Spillgebees.DocsSdk.scrollToElement", id);
+    }
+
+    private void ToggleOpen() => _isOpen = !_isOpen;
+}
