@@ -96,6 +96,9 @@ jobs:
       - name: add .nojekyll
         run: touch publish/wwwroot/.nojekyll
 
+      - name: add 404.html for SPA routing
+        run: cp publish/wwwroot/index.html publish/wwwroot/404.html
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: publish/wwwroot

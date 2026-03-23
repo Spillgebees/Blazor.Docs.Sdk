@@ -38,7 +38,7 @@
     private bool IsActive(string href)
     {
         var relativePath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
-        return string.Equals("/" + relativePath, href, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(relativePath, href.TrimStart('/'), StringComparison.OrdinalIgnoreCase);
+        var normalizedHref = href.TrimStart('/');
+        return string.Equals(relativePath, normalizedHref, StringComparison.OrdinalIgnoreCase);
     }
 }
