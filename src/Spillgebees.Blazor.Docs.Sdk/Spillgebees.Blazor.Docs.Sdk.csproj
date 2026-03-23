@@ -8,6 +8,7 @@
     <PackageTags>blazor;blazor-wasm;documentation;docs;razor-class-library</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>spillgebees.png</PackageIcon>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RepositoryUrl>https://github.com/Spillgebees/Blazor.Docs.Sdk</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -24,6 +25,7 @@
 
   <ItemGroup>
     <None Include="Spillgebees.Blazor.Docs.Sdk.targets" Pack="true" PackagePath="buildTransitive/" />
+    <None Include="..\..\assets\spillgebees.png" Pack="true" PackagePath="" />
     <None Include="..\..\README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 

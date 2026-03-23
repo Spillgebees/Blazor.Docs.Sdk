@@ -1,7 +1,7 @@
 # Spillgebees.Blazor.Docs.Sdk
 
 [![Build & test](https://github.com/Spillgebees/Blazor.Docs.Sdk/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/Spillgebees/Blazor.Docs.Sdk/actions/workflows/build-and-test.yml)
-[![NuGet](https://img.shields.io/nuget/v/Spillgebees.Blazor.Docs.Sdk?label=nuget)](https://github.com/Spillgebees/Blazor.Docs.Sdk/packages)
+[![NuGet](https://img.shields.io/nuget/v/Spillgebees.Blazor.Docs.Sdk?label=nuget)](https://www.nuget.org/packages/Spillgebees.Blazor.Docs.Sdk)
 
 A Razor Class Library NuGet package for building and deploying documentation sites for Spillgebees Blazor component libraries. Each component repo hosts its own docs site by referencing this SDK, without a combined repo or companion PRs.
 
@@ -17,12 +17,7 @@ A Razor Class Library NuGet package for building and deploying documentation sit
 
 ## Package Sources
 
-This repo includes a `NuGet.config` with the required feeds preconfigured:
-
-- **GitHub Packages** (`nuget.pkg.github.com/spillgebees`): Spillgebees packages
-- **nuget.org**: all other dependencies
-
-No manual feed configuration is needed; restoring the solution picks up `NuGet.config` automatically.
+This package is published to [nuget.org](https://www.nuget.org/packages/Spillgebees.Blazor.Docs.Sdk). No special feed configuration is needed.
 
 ## Quick Start
 
@@ -64,11 +59,11 @@ No manual feed configuration is needed; restoring the solution picks up `NuGet.c
     private static readonly NavSection[] Navigation =
     [
         new("Getting Started", [
-            new NavPage("Home", "/"),
-            new NavPage("Installation", "/installation"),
+            new NavPage("Home", ""),
+            new NavPage("Installation", "installation"),
         ]),
         new("Components", [
-            new NavPage("MyComponent", "/components/my-component"),
+            new NavPage("MyComponent", "components/my-component"),
         ]),
         new("API Reference", ApiReferenceNav.Generate<MyComponent>()),
     ];
