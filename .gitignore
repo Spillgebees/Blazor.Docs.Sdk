@@ -114,6 +114,10 @@ $RECYCLE.BIN/
 ## ---- Superpowers ----
 .superpowers/
 
+## ---- Vite build output ----
+src/Spillgebees.Blazor.Docs.Sdk/wwwroot/*.lib.module.js
+src/Spillgebees.Blazor.Docs.Sdk/wwwroot/*.lib.module.js.map
+
 ## ---- Misc ----
 *.log
 *.tmp
