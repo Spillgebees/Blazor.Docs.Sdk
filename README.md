@@ -97,6 +97,16 @@ This package is published to [nuget.org](https://www.nuget.org/packages/Spillgeb
 | `DocSidebar` | Collapsible navigation sidebar driven by the `Navigation` parameter on `DocSite` |
 | `DocFooter` | Footer displaying the GitHub link configured on `DocSite` |
 
+## Build-Time Automation
+
+When your docs project directly references the SDK package, MSBuild targets run automatically during build:
+
+**Source extraction** scans your Razor files for `ExampleView<TComponent>` references, locates the matching `.razor` and `.razor.cs` source files in referenced projects, and embeds them as assembly resources. `ExampleView` reads these at runtime to display syntax-highlighted source alongside live components.
+
+**API manifest generation** reflects over referenced Spillgebees library assemblies and their XML documentation files to produce a JSON manifest. `ApiDoc` and `ApiReferenceNav.Generate<T>()` use this manifest to render API reference pages with parameters, methods, events, and descriptions.
+
+No configuration needed. The targets only run in projects that directly reference the SDK (packed into `build/`, not `buildTransitive/`), so transitive consumers are unaffected.
+
 ## Running the Demo
 
 ```bash
