@@ -11,7 +11,7 @@ A Razor Class Library NuGet package for building and deploying documentation sit
 - Dark/light theme toggle with `localStorage` persistence
 - Live component rendering alongside syntax-highlighted source code via `ExampleView`
 - Auto-generated API reference pages from XML doc comments and reflection
-- Build-time source extraction and syntax highlighting via MSBuild targets
+- Build-time source extraction and API manifest generation via MSBuild targets (runs automatically for direct package consumers)
 - Self-hosted Inter Variable and JetBrains Mono fonts
 - Reusable GitHub Actions workflow for deploying to GitHub Pages
 

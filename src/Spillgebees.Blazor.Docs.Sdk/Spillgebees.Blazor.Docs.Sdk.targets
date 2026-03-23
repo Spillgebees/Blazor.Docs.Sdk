@@ -1,37 +1,463 @@
 <Project>
   <!--
-    These targets run in consuming projects that reference the Spillgebees.Blazor.Docs.Sdk package.
-    They extract source code for ExampleView components and generate API manifests
-    from referenced library assemblies.
+    Spillgebees.Blazor.Docs.Sdk build-time targets.
+    Packed into build/ (not buildTransitive/) so they only run in projects
+    that directly reference the SDK package.
+
+    Two targets:
+      1. DocsSdk_ExtractSources  — scans .razor files for ExampleView<TComponent>
+         references, finds matching source files in referenced projects, and
+         embeds them as EmbeddedResource with LogicalName SourceEmbed:{FullTypeName}:{FileName}.
+      2. DocsSdk_GenerateApiManifest — parses XML doc files from referenced
+         Spillgebees.* assemblies to produce JSON API manifests embedded as
+         ApiManifest:{AssemblyName}.
   -->
 
-  <PropertyGroup>
-    <DocsSdkSourceExtractorEnabled Condition="'$(DocsSdkSourceExtractorEnabled)' == ''"
-      >true</DocsSdkSourceExtractorEnabled
-    >
-    <DocsSdkApiManifestEnabled Condition="'$(DocsSdkApiManifestEnabled)' == ''">true</DocsSdkApiManifestEnabled>
-  </PropertyGroup>
-
-  <Target
-    Name="DocsSdk_ExtractSources"
-    BeforeTargets="BeforeCompile"
-    Condition="'$(DocsSdkSourceExtractorEnabled)' == 'true'"
+  <!-- ================================================================== -->
+  <!-- Source Extraction                                                    -->
+  <!-- ================================================================== -->
+  <UsingTask
+    TaskName="DocsSdk_ExtractSourcesTask"
+    TaskFactory="RoslynCodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll"
   >
-    <Message
-      Importance="normal"
-      Text="[Docs SDK] Source extraction target registered. Implementation pending build-tool integration."
-    />
+    <ParameterGroup>
+      <RazorFiles ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <ReferencedProjectDirs ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="false" />
+      <ProjectDir ParameterType="System.String" Required="true" />
+      <RootNamespace ParameterType="System.String" Required="true" />
+      <IntermediateDir ParameterType="System.String" Required="true" />
+      <EmbeddedSources ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+var tComponentRe = new Regex(@"TComponent=""(\w+)""");
+var additionalSourcesRe = new Regex(@"AdditionalSources=""@\((.*?)\)""");
+var typeOfRe = new Regex(@"typeof\((\w+)\)");
+
+// Collect all simple type names referenced from ExampleView usages
+var referencedTypes = new HashSet<string>();
+if (RazorFiles != null)
+{
+    foreach (var item in RazorFiles)
+    {
+        var content = File.ReadAllText(item.GetMetadata("FullPath"));
+        foreach (Match m in tComponentRe.Matches(content))
+            referencedTypes.Add(m.Groups[1].Value);
+        foreach (Match am in additionalSourcesRe.Matches(content))
+        {
+            var inner = am.Groups[1].Value;
+            foreach (Match tm in typeOfRe.Matches(inner))
+                referencedTypes.Add(tm.Groups[1].Value);
+        }
+    }
+}
+
+if (referencedTypes.Count == 0)
+{
+    EmbeddedSources = Array.Empty<Microsoft.Build.Framework.ITaskItem>();
+    return true;
+}
+
+Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
+    "[Docs SDK] Discovered ExampleView types: " + string.Join(", ", referencedTypes));
+
+// Build list of directories to search: the consuming project + referenced project dirs
+var searchDirs = new List<string> { ProjectDir };
+if (ReferencedProjectDirs != null)
+{
+    foreach (var d in ReferencedProjectDirs)
+    {
+        var dir = d.GetMetadata("FullPath");
+        if (!string.IsNullOrEmpty(dir))
+        {
+            var projectFileDir = Path.GetDirectoryName(dir);
+            if (!string.IsNullOrEmpty(projectFileDir) && Directory.Exists(projectFileDir))
+                searchDirs.Add(projectFileDir);
+        }
+    }
+}
+
+var namespaceRe = new Regex(@"@namespace\s+([\w.]+)");
+var csNamespaceRe = new Regex(@"namespace\s+([\w.]+)");
+var outputDir = Path.Combine(IntermediateDir, "DocsSdk", "sources");
+Directory.CreateDirectory(outputDir);
+
+var results = new List<Microsoft.Build.Framework.ITaskItem>();
+
+foreach (var typeName in referencedTypes)
+{
+    // Search for matching .razor and .razor.cs files
+    foreach (var searchDir in searchDirs)
+    {
+        var razorFiles = Directory.GetFiles(searchDir, typeName + ".razor", SearchOption.AllDirectories);
+        foreach (var razorFile in razorFiles)
+        {
+            // Determine full type name
+            var razorContent = File.ReadAllText(razorFile);
+            string fullTypeName;
+            var nsMatch = namespaceRe.Match(razorContent);
+            if (nsMatch.Success)
+            {
+                fullTypeName = nsMatch.Groups[1].Value + "." + typeName;
+            }
+            else
+            {
+                // Construct from root namespace + relative path
+                var relPath = razorFile.Substring(searchDir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var relDir = Path.GetDirectoryName(relPath) ?? "";
+                var nsPart = relDir.Replace(Path.DirectorySeparatorChar, '.').Replace(Path.AltDirectorySeparatorChar, '.');
+                fullTypeName = string.IsNullOrEmpty(nsPart) ? RootNamespace + "." + typeName : RootNamespace + "." + nsPart + "." + typeName;
+            }
+
+            // Copy .razor file
+            var destRazor = Path.Combine(outputDir, fullTypeName + "." + typeName + ".razor");
+            File.Copy(razorFile, destRazor, true);
+            var razorItem = new Microsoft.Build.Utilities.TaskItem(destRazor);
+            razorItem.SetMetadata("LogicalName", "SourceEmbed:" + fullTypeName + ":" + typeName + ".razor");
+            results.Add(razorItem);
+
+            Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
+                "[Docs SDK] Embedded source: " + fullTypeName + ":" + typeName + ".razor");
+
+            // Check for .razor.cs file
+            var csFile = razorFile + ".cs";
+            if (File.Exists(csFile))
+            {
+                var destCs = Path.Combine(outputDir, fullTypeName + "." + typeName + ".razor.cs");
+                File.Copy(csFile, destCs, true);
+                var csItem = new Microsoft.Build.Utilities.TaskItem(destCs);
+                csItem.SetMetadata("LogicalName", "SourceEmbed:" + fullTypeName + ":" + typeName + ".razor.cs");
+                results.Add(csItem);
+
+                Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
+                    "[Docs SDK] Embedded source: " + fullTypeName + ":" + typeName + ".razor.cs");
+            }
+        }
+    }
+}
+
+EmbeddedSources = results.ToArray();
+      ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="DocsSdk_ExtractSources" BeforeTargets="BeforeCompile" DependsOnTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <_DocsSdk_RazorFiles Include="$(MSBuildProjectDirectory)/**/*.razor" />
+      <_DocsSdk_ReferencedProjectDirs Include="@(_MSBuildProjectReferenceExistent)" />
+    </ItemGroup>
+
+    <DocsSdk_ExtractSourcesTask
+      RazorFiles="@(_DocsSdk_RazorFiles)"
+      ReferencedProjectDirs="@(_DocsSdk_ReferencedProjectDirs)"
+      ProjectDir="$(MSBuildProjectDirectory)"
+      RootNamespace="$(RootNamespace)"
+      IntermediateDir="$(BaseIntermediateOutputPath)"
+    >
+      <Output TaskParameter="EmbeddedSources" ItemName="_DocsSdk_EmbeddedSources" />
+    </DocsSdk_ExtractSourcesTask>
+
+    <ItemGroup>
+      <EmbeddedResource Include="@(_DocsSdk_EmbeddedSources)" LogicalName="%(_DocsSdk_EmbeddedSources.LogicalName)" />
+    </ItemGroup>
   </Target>
 
-  <Target
-    Name="DocsSdk_GenerateApiManifest"
-    AfterTargets="ResolveProjectReferences"
-    BeforeTargets="BeforeCompile"
-    Condition="'$(DocsSdkApiManifestEnabled)' == 'true'"
+  <!-- ================================================================== -->
+  <!-- API Manifest Generation                                             -->
+  <!-- ================================================================== -->
+  <UsingTask
+    TaskName="DocsSdk_GenerateApiManifestTask"
+    TaskFactory="RoslynCodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll"
   >
-    <Message
-      Importance="normal"
-      Text="[Docs SDK] API manifest generation target registered. Implementation pending build-tool integration."
-    />
+    <ParameterGroup>
+      <ReferencePaths ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <IntermediateDir ParameterType="System.String" Required="true" />
+      <GeneratedManifests ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.Collections.Generic" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Using Namespace="System.Xml.Linq" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+// JSON helper functions
+string JsonEscape(string s)
+{
+    return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r").Replace("\t", "\\t") + "\"";
+}
+
+string JsonEscapeNullable(string s)
+{
+    return s == null ? "null" : JsonEscape(s);
+}
+
+var outputDir = Path.Combine(IntermediateDir, "DocsSdk", "manifests");
+Directory.CreateDirectory(outputDir);
+
+var results = new List<Microsoft.Build.Framework.ITaskItem>();
+
+if (ReferencePaths == null)
+{
+    GeneratedManifests = Array.Empty<Microsoft.Build.Framework.ITaskItem>();
+    return true;
+}
+
+foreach (var refItem in ReferencePaths)
+{
+    var dllPath = refItem.GetMetadata("FullPath");
+    if (string.IsNullOrEmpty(dllPath))
+        dllPath = refItem.ItemSpec;
+
+    var fileName = Path.GetFileNameWithoutExtension(dllPath);
+
+    // Only process Spillgebees.* assemblies, excluding Tests
+    if (!fileName.StartsWith("Spillgebees.", StringComparison.OrdinalIgnoreCase))
+        continue;
+    if (fileName.IndexOf("Tests", StringComparison.OrdinalIgnoreCase) >= 0)
+        continue;
+
+    // Require the XML doc file to exist next to the DLL
+    var xmlPath = Path.ChangeExtension(dllPath, ".xml");
+    if (!File.Exists(xmlPath))
+    {
+        Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
+            "[Docs SDK] Skipping " + fileName + " (no XML docs found)");
+        continue;
+    }
+
+    Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
+        "[Docs SDK] Generating API manifest for: " + fileName);
+
+    try
+    {
+        // Parse XML doc members into a lookup
+        var xdoc = XDocument.Load(xmlPath);
+        var members = new Dictionary<string, string>();
+        foreach (var member in xdoc.Descendants("member"))
+        {
+            var name = member.Attribute("name")?.Value;
+            var summary = member.Element("summary")?.Value?.Trim();
+            if (name != null && summary != null)
+                members[name] = summary;
+        }
+
+        // Discover types from T: members
+        var typeFullNames = members.Keys
+            .Where(k => k.StartsWith("T:"))
+            .Select(k => k.Substring(2))
+            .OrderBy(n => n)
+            .ToList();
+
+        // Group properties, methods, fields, events by owning type
+        var propsByType = new Dictionary<string, List<string>>();
+        var methodsByType = new Dictionary<string, List<string>>();
+        var fieldsByType = new Dictionary<string, List<string>>();
+        var eventsByType = new Dictionary<string, List<string>>();
+
+        foreach (var key in members.Keys)
+        {
+            if (key.Length < 3 || key[1] != ':') continue;
+            var prefix = key[0];
+            var fullMember = key.Substring(2);
+
+            // Find owning type by matching longest type prefix
+            string ownerType = null;
+            foreach (var tf in typeFullNames)
+            {
+                if (fullMember.StartsWith(tf + ".") || fullMember.StartsWith(tf + "#"))
+                    ownerType = tf;
+            }
+            if (ownerType == null) continue;
+
+            var memberName = fullMember.Substring(ownerType.Length + 1);
+            // Strip method parameters for grouping
+            var parenIdx = memberName.IndexOf('(');
+            var cleanName = parenIdx >= 0 ? memberName.Substring(0, parenIdx) : memberName;
+
+            switch (prefix)
+            {
+                case 'P':
+                    if (!propsByType.ContainsKey(ownerType)) propsByType[ownerType] = new List<string>();
+                    propsByType[ownerType].Add(cleanName);
+                    break;
+                case 'M':
+                    if (cleanName.StartsWith("#")) break; // skip constructors
+                    if (!methodsByType.ContainsKey(ownerType)) methodsByType[ownerType] = new List<string>();
+                    methodsByType[ownerType].Add(cleanName);
+                    break;
+                case 'F':
+                    if (!fieldsByType.ContainsKey(ownerType)) fieldsByType[ownerType] = new List<string>();
+                    fieldsByType[ownerType].Add(cleanName);
+                    break;
+                case 'E':
+                    if (!eventsByType.ContainsKey(ownerType)) eventsByType[ownerType] = new List<string>();
+                    eventsByType[ownerType].Add(cleanName);
+                    break;
+            }
+        }
+
+        // Build JSON
+        var typesJson = new List<string>();
+
+        foreach (var typeFull in typeFullNames)
+        {
+            var lastDot = typeFull.LastIndexOf('.');
+            var typeNs = lastDot >= 0 ? typeFull.Substring(0, lastDot) : "";
+            var typeName = lastDot >= 0 ? typeFull.Substring(lastDot + 1) : typeFull;
+            var typeSummary = members.ContainsKey("T:" + typeFull) ? members["T:" + typeFull] : null;
+
+            // Determine kind heuristically from XML doc content and naming
+            var kind = "class";
+            if (typeSummary != null)
+            {
+                var lower = typeSummary.ToLowerInvariant();
+                if (lower.Contains("enum")) kind = "enum";
+                else if (lower.Contains("interface")) kind = "interface";
+                else if (lower.Contains("struct") || lower.Contains("value type")) kind = "struct";
+                else if (lower.Contains("record")) kind = "record";
+            }
+
+            // Check if fields exist (likely an enum) vs properties (likely a class/component)
+            var hasFields = fieldsByType.ContainsKey(typeFull) && fieldsByType[typeFull].Count > 0;
+            var hasProps = propsByType.ContainsKey(typeFull) && propsByType[typeFull].Count > 0;
+            if (hasFields && !hasProps) kind = "enum";
+
+            // Format generic type name
+            var backtick = typeName.IndexOf('`');
+            if (backtick >= 0)
+            {
+                typeName = typeName.Substring(0, backtick) + "<T>";
+            }
+
+            var propsJson = new List<string>();
+            var methodsJson = new List<string>();
+            var eventsJson = new List<string>();
+            var enumValuesJson = new List<string>();
+
+            if (kind == "enum" && fieldsByType.ContainsKey(typeFull))
+            {
+                int idx = 0;
+                foreach (var field in fieldsByType[typeFull])
+                {
+                    var fKey = "F:" + typeFull + "." + field;
+                    var fSummary = members.ContainsKey(fKey) ? members[fKey] : null;
+                    enumValuesJson.Add("{" +
+                        "\"name\":" + JsonEscape(field) +
+                        ",\"value\":" + idx +
+                        ",\"summary\":" + JsonEscapeNullable(fSummary) +
+                        "}");
+                    idx++;
+                }
+            }
+            else
+            {
+                if (propsByType.ContainsKey(typeFull))
+                {
+                    foreach (var prop in propsByType[typeFull])
+                    {
+                        var pKey = "P:" + typeFull + "." + prop;
+                        var pSummary = members.ContainsKey(pKey) ? members[pKey] : null;
+                        propsJson.Add("{" +
+                            "\"name\":" + JsonEscape(prop) +
+                            ",\"type\":\"\"" +
+                            ",\"summary\":" + JsonEscapeNullable(pSummary) +
+                            ",\"isParameter\":false" +
+                            ",\"defaultValue\":null" +
+                            "}");
+                    }
+                }
+
+                if (methodsByType.ContainsKey(typeFull))
+                {
+                    foreach (var method in methodsByType[typeFull])
+                    {
+                        var mKey = "M:" + typeFull + "." + method;
+                        var mSummary = members.ContainsKey(mKey) ? members[mKey] : null;
+                        methodsJson.Add("{" +
+                            "\"name\":" + JsonEscape(method) +
+                            ",\"returnType\":\"\"" +
+                            ",\"summary\":" + JsonEscapeNullable(mSummary) +
+                            ",\"parameters\":[]" +
+                            "}");
+                    }
+                }
+
+                if (eventsByType.ContainsKey(typeFull))
+                {
+                    foreach (var evt in eventsByType[typeFull])
+                    {
+                        var eKey = "E:" + typeFull + "." + evt;
+                        var eSummary = members.ContainsKey(eKey) ? members[eKey] : null;
+                        eventsJson.Add("{" +
+                            "\"name\":" + JsonEscape(evt) +
+                            ",\"type\":\"\"" +
+                            ",\"summary\":" + JsonEscapeNullable(eSummary) +
+                            "}");
+                    }
+                }
+            }
+
+            typesJson.Add("{" +
+                "\"name\":" + JsonEscape(typeName) +
+                ",\"fullName\":" + JsonEscape(typeFull) +
+                ",\"namespace\":" + JsonEscape(typeNs) +
+                ",\"kind\":" + JsonEscape(kind) +
+                ",\"summary\":" + JsonEscapeNullable(typeSummary) +
+                ",\"baseType\":null" +
+                ",\"interfaces\":[]" +
+                ",\"genericParameters\":[]" +
+                ",\"properties\":[" + string.Join(",", propsJson) + "]" +
+                ",\"methods\":[" + string.Join(",", methodsJson) + "]" +
+                ",\"events\":[" + string.Join(",", eventsJson) + "]" +
+                ",\"enumValues\":[" + string.Join(",", enumValuesJson) + "]" +
+                "}");
+        }
+
+        var json = "{\"assemblyName\":" + JsonEscape(fileName) + ",\"types\":[" + string.Join(",", typesJson) + "]}";
+        var outputPath = Path.Combine(outputDir, fileName + ".json");
+        File.WriteAllText(outputPath, json);
+
+        var item = new Microsoft.Build.Utilities.TaskItem(outputPath);
+        item.SetMetadata("LogicalName", "ApiManifest:" + fileName);
+        results.Add(item);
+
+        Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
+            "[Docs SDK] Generated API manifest: " + fileName);
+    }
+    catch (Exception ex)
+    {
+        Log.LogWarning("[Docs SDK] Failed to generate manifest for " + fileName + ": " + ex.Message);
+    }
+}
+
+GeneratedManifests = results.ToArray();
+      ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="DocsSdk_GenerateApiManifest" BeforeTargets="BeforeCompile" DependsOnTargets="ResolveAssemblyReferences">
+    <DocsSdk_GenerateApiManifestTask ReferencePaths="@(ReferencePath)" IntermediateDir="$(BaseIntermediateOutputPath)">
+      <Output TaskParameter="GeneratedManifests" ItemName="_DocsSdk_GeneratedManifests" />
+    </DocsSdk_GenerateApiManifestTask>
+
+    <ItemGroup>
+      <EmbeddedResource
+        Include="@(_DocsSdk_GeneratedManifests)"
+        LogicalName="%(_DocsSdk_GeneratedManifests.LogicalName)"
+      />
+    </ItemGroup>
   </Target>
 </Project>

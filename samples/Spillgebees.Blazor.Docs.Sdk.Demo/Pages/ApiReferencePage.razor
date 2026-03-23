@@ -19,6 +19,8 @@ else
     private ApiTypeInfo? _typeInfo;
     private string? _examplesUrl;
 
+    // Manual type map because this demo documents the SDK itself.
+    // Consuming repos (e.g. Blazor.Map) use auto-generated API manifests instead.
     private static readonly Dictionary<string, ApiTypeInfo> _types = BuildTypeMap();
 
     private static readonly Dictionary<string, string> _examplesUrls = new()

@@ -17,14 +17,6 @@
     <ProjectReference Include="../../src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource
-      Include="Samples/CounterExample.razor"
-      LogicalName="SourceEmbed:Spillgebees.Blazor.Docs.Sdk.Demo.Samples.CounterExample:CounterExample.razor"
-    />
-    <EmbeddedResource
-      Include="Samples/HelloWorldExample.razor"
-      LogicalName="SourceEmbed:Spillgebees.Blazor.Docs.Sdk.Demo.Samples.HelloWorldExample:HelloWorldExample.razor"
-    />
-  </ItemGroup>
+  <!-- Import targets explicitly for ProjectReference (auto-imported for PackageReference) -->
+  <Import Project="../../src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.targets" />
 </Project>

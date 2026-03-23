@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Spillgebees.Blazor.Docs.Sdk.targets" Pack="true" PackagePath="buildTransitive/" />
+    <None Include="Spillgebees.Blazor.Docs.Sdk.targets" Pack="true" PackagePath="build/" />
     <None Include="..\..\assets\spillgebees.png" Pack="true" PackagePath="" />
     <None Include="..\..\README.md" Pack="true" PackagePath="" />
   </ItemGroup>
