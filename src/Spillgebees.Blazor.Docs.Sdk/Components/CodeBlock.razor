@@ -104,12 +104,14 @@
 
     private string GetLanguageClass()
     {
-        if (string.IsNullOrEmpty(Language))
+        var language = InferLanguageFromFileName(_activeFile) ?? Language;
+
+        if (string.IsNullOrEmpty(language))
         {
             return "";
         }
 
-        return Language.ToLowerInvariant() switch
+        return language.ToLowerInvariant() switch
         {
             "razor" or "cshtml" => "language-cshtml-razor",
             "csharp" or "cs" or "c#" => "language-csharp",
@@ -119,7 +121,39 @@
             "json" => "language-json",
             "js" or "javascript" => "language-javascript",
             "bash" or "shell" or "terminal" => "language-bash",
-            _ => $"language-{Language.ToLowerInvariant()}",
+            _ => $"language-{language.ToLowerInvariant()}",
+        };
+    }
+
+    private static string? InferLanguageFromFileName(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+        {
+            return null;
+        }
+
+        if (fileName.EndsWith(".razor.cs", StringComparison.OrdinalIgnoreCase))
+        {
+            return "csharp";
+        }
+
+        if (fileName.EndsWith(".razor", StringComparison.OrdinalIgnoreCase)
+            || fileName.EndsWith(".cshtml", StringComparison.OrdinalIgnoreCase))
+        {
+            return "razor";
+        }
+
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".cs" => "csharp",
+            ".xml" or ".csproj" => "xml",
+            ".html" or ".htm" => "html",
+            ".css" => "css",
+            ".json" => "json",
+            ".js" => "javascript",
+            ".sh" or ".bash" => "bash",
+            _ => null,
         };
     }
 
