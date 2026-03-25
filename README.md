@@ -105,6 +105,8 @@ When your docs project directly references the SDK package, MSBuild targets run 
 
 **API manifest generation** reflects over referenced Spillgebees library assemblies and their XML documentation files to produce a JSON manifest. `ApiDoc` and `ApiReferenceNav.Generate<T>()` use this manifest to render API reference pages with parameters, methods, events, and descriptions.
 
+At runtime, `ExampleView`, `ApiDoc`, and `ApiReferenceNav.Generate<T>()` search for embedded resources across all loaded assemblies — the library assembly is checked first, then the docs project assembly and others. This means the resources work regardless of which assembly they end up in.
+
 No configuration needed. The targets only run in projects that directly reference the SDK (packed into `build/`, not `buildTransitive/`), so transitive consumers are unaffected.
 
 ## Running the Demo

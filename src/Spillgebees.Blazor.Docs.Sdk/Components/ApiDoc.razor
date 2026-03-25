@@ -1,6 +1,5 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.JSInterop
-@using Spillgebees.Blazor.Docs.Sdk.Build
 @using System.Linq
 @inject IJSRuntime JS
 
@@ -201,12 +200,10 @@
     {
         if (TypeInfo is not null || Type is null) return;
 
-        var assembly = Type.Assembly;
-        var resourceName = $"ApiManifest:{assembly.GetName().Name}";
-        using var stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream is null) return;
+        var assemblyName = Type.Assembly.GetName().Name;
+        if (assemblyName is null) return;
 
-        var manifest = System.Text.Json.JsonSerializer.Deserialize<ApiManifest>(stream);
+        var manifest = EmbeddedResourceLocator.LoadApiManifest(assemblyName, Type.Assembly);
         TypeInfo = manifest?.Types.FirstOrDefault(t => t.FullName == (Type.FullName ?? Type.Name));
     }
 

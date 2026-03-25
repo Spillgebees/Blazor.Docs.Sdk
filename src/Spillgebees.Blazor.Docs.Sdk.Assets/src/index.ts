@@ -1,3 +1,4 @@
+import "./styles/docs-sdk.scss";
 import hljs from "highlight.js/lib/core";
 
 // Import only the languages we need (tree-shakeable)

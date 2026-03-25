@@ -14,7 +14,7 @@
     Inputs="package.json;pnpm-lock.yaml"
     Outputs="node_modules/.pnpm/lock.yaml"
   >
-    <Exec Command="pnpm install --frozen-lockfile" StandardOutputImportance="Low" />
+    <Exec Command="corepack pnpm install --frozen-lockfile" StandardOutputImportance="Low" />
   </Target>
 
   <Target
@@ -22,10 +22,10 @@
     BeforeTargets="Build"
     Condition="'$(DesignTimeBuild)' != 'true'"
     Inputs="src/**/*;vite.config.ts;package.json;pnpm-lock.yaml"
-    Outputs="$(ViteOutputDir)/Spillgebees.Blazor.Docs.Sdk.lib.module.js;$(PnpmBuildMarker)"
+    Outputs="$(ViteOutputDir)/Spillgebees.Blazor.Docs.Sdk.lib.module.js;$(ViteOutputDir)/docs-sdk.css;$(PnpmBuildMarker)"
   >
     <Delete Files="obj/pnpm-build.Debug.marker;obj/pnpm-build.Release.marker" />
-    <Exec Command="pnpm run $(PnpmBuildScript)" StandardOutputImportance="Low" />
+    <Exec Command="corepack pnpm run $(PnpmBuildScript)" StandardOutputImportance="Low" />
     <Touch Files="$(PnpmBuildMarker)" AlwaysCreate="true" />
   </Target>
 

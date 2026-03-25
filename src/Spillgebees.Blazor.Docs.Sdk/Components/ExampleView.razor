@@ -52,16 +52,11 @@
 
     private void LoadSourceFiles(Type type)
     {
-        var assembly = type.Assembly;
         var resourcePrefix = $"SourceEmbed:{type.FullName}";
+        var matches = EmbeddedResourceLocator.FindResources(resourcePrefix, type.Assembly);
 
-        foreach (var resourceName in assembly.GetManifestResourceNames())
+        foreach (var (assembly, resourceName) in matches)
         {
-            if (!resourceName.StartsWith(resourcePrefix, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream is null)
             {

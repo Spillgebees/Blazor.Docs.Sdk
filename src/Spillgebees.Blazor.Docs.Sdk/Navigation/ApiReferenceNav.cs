@@ -1,6 +1,5 @@
 namespace Spillgebees.Blazor.Docs.Sdk.Navigation;
 
-using System.Text.Json;
 using Spillgebees.Blazor.Docs.Sdk.Build;
 
 /// <summary>
@@ -23,10 +22,11 @@ public static class ApiReferenceNav
 
     /// <summary>
     /// Generates API reference navigation pages by loading the embedded <c>ApiManifest</c> resource
-    /// from the assembly that contains <typeparamref name="T"/>.
+    /// for the assembly that contains <typeparamref name="T"/>. Searches that assembly first, then
+    /// falls back to all loaded assemblies (e.g. the docs project where the resource is actually embedded).
     /// </summary>
     /// <typeparam name="T">
-    /// A type whose assembly carries the embedded <c>ApiManifest:&lt;AssemblyName&gt;</c> resource.
+    /// A type from the library whose API manifest should be loaded.
     /// </typeparam>
     /// <returns>
     /// A read-only list of <see cref="NavPage"/> instances built from the manifest, or an empty list
@@ -35,15 +35,14 @@ public static class ApiReferenceNav
     public static IReadOnlyList<NavPage> Generate<T>()
     {
         var assembly = typeof(T).Assembly;
-        var resourceName = $"ApiManifest:{assembly.GetName().Name}";
+        var assemblyName = assembly.GetName().Name;
 
-        using var stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream is null)
+        if (assemblyName is null)
         {
             return [];
         }
 
-        var manifest = JsonSerializer.Deserialize<ApiManifest>(stream);
+        var manifest = EmbeddedResourceLocator.LoadApiManifest(assemblyName, assembly);
         return manifest is null ? [] : FromManifest(manifest);
     }
 }
