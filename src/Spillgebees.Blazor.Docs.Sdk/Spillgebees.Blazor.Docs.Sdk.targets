@@ -92,13 +92,37 @@ if (ReferencedProjectDirs != null)
     }
 }
 
-var namespaceRe = new Regex(@"@namespace\s+([\w.]+)");
-var csNamespaceRe = new Regex(@"namespace\s+([\w.]+)");
+var namespaceRe = new Regex(@"^[ \t]*@namespace\s+([\w.]+)", RegexOptions.Multiline);
+var csNamespaceRe = new Regex(@"^[ \t]*namespace\s+([\w.]+)", RegexOptions.Multiline);
+var csBlockCommentRe = new Regex(@"/\*.*?\*/", RegexOptions.Singleline);
+var csLineCommentRe = new Regex(@"//.*$", RegexOptions.Multiline);
+var razorCommentBlockRe = new Regex(@"@\*.*?\*@", RegexOptions.Singleline);
+var htmlCommentBlockRe = new Regex(@"<!--.*?-->", RegexOptions.Singleline);
 var outputDir = Path.Combine(IntermediateDir, "DocsSdk", "sources");
 Directory.CreateDirectory(outputDir);
 
 var results = new List<Microsoft.Build.Framework.ITaskItem>();
 var embeddedLogicalNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+var pureCsFilesBySearchDir = new Dictionary<string, Dictionary<string, List<string>>>(StringComparer.OrdinalIgnoreCase);
+
+foreach (var searchDir in searchDirs)
+{
+    var filesByName = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+    var pureCsFiles = Directory.GetFiles(searchDir, "*.cs", SearchOption.AllDirectories);
+    foreach (var pureCsFile in pureCsFiles)
+    {
+        var fileName = Path.GetFileName(pureCsFile);
+        if (!filesByName.TryGetValue(fileName, out var matchingFiles))
+        {
+            matchingFiles = new List<string>();
+            filesByName[fileName] = matchingFiles;
+        }
+
+        matchingFiles.Add(pureCsFile);
+    }
+
+    pureCsFilesBySearchDir[searchDir] = filesByName;
+}
 
 foreach (var typeName in referencedTypes)
 {
@@ -110,8 +134,9 @@ foreach (var typeName in referencedTypes)
         {
             // Determine full type name
             var razorContent = File.ReadAllText(razorFile);
+            var cleanedRazorContent = htmlCommentBlockRe.Replace(razorCommentBlockRe.Replace(razorContent, ""), "");
             string fullTypeName;
-            var nsMatch = namespaceRe.Match(razorContent);
+            var nsMatch = namespaceRe.Match(cleanedRazorContent);
             if (nsMatch.Success)
             {
                 fullTypeName = nsMatch.Groups[1].Value + "." + typeName;
@@ -164,12 +189,21 @@ foreach (var typeName in referencedTypes)
         }
 
         // Check for pure .cs source file with matching type name
-        var pureCsFiles = Directory.GetFiles(searchDir, typeName + ".cs", SearchOption.AllDirectories);
+        var pureCsFiles = new List<string>();
+        if (pureCsFilesBySearchDir.TryGetValue(searchDir, out var filesByName))
+        {
+            if (filesByName.TryGetValue(typeName + ".cs", out var matchingFiles))
+            {
+                pureCsFiles = matchingFiles;
+            }
+        }
+
         foreach (var pureCsFile in pureCsFiles)
         {
             var csContent = File.ReadAllText(pureCsFile);
+            var cleanedCsContent = csLineCommentRe.Replace(csBlockCommentRe.Replace(csContent, ""), "");
             string fullCsTypeName;
-            var csNsMatch = csNamespaceRe.Match(csContent);
+            var csNsMatch = csNamespaceRe.Match(cleanedCsContent);
             if (csNsMatch.Success)
             {
                 fullCsTypeName = csNsMatch.Groups[1].Value + "." + typeName;

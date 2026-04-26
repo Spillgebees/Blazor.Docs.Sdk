@@ -218,6 +218,218 @@ public class BuildTargetsTests
         }
     }
 
+    [Test]
+    public async Task Should_ignore_commented_csharp_namespace_declaration_when_deriving_logical_name()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false,
+            trainCatalogSource: """
+            // namespace Samples.Commented;
+
+            public class TrainCatalog
+            {
+                public const string Marker = "PRIMARY";
+            }
+            """
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+
+            // assert
+            capturedItems
+                .Should()
+                .Contain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:DocsSite.Sources.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                );
+            capturedItems
+                .Should()
+                .NotContain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Commented.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                );
+        }
+        finally
+        {
+            Directory.Delete(fixture.RootDirectory, recursive: true);
+        }
+    }
+
+    [Test]
+    public async Task Should_ignore_multiline_commented_csharp_namespace_declaration_when_deriving_logical_name()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false,
+            trainCatalogSource: """
+            /*
+               namespace Samples.Commented;
+            */
+
+            public class TrainCatalog
+            {
+                public const string Marker = "PRIMARY";
+            }
+            """
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+
+            // assert
+            capturedItems
+                .Should()
+                .Contain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:DocsSite.Sources.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                );
+            capturedItems
+                .Should()
+                .NotContain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Commented.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                );
+        }
+        finally
+        {
+            Directory.Delete(fixture.RootDirectory, recursive: true);
+        }
+    }
+
+    [Test]
+    public async Task Should_ignore_commented_razor_namespace_declaration_when_deriving_logical_name()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false,
+            trainTrackingExampleSource: """
+            @* @namespace Samples.Commented *@
+
+            <div>tracking</div>
+            """
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+
+            // assert
+            capturedItems
+                .Should()
+                .Contain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:DocsSite.Sources.TrainTrackingExample:TrainTrackingExample.razor|",
+                        StringComparison.Ordinal
+                    )
+                );
+            capturedItems
+                .Should()
+                .NotContain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Commented.TrainTrackingExample:TrainTrackingExample.razor|",
+                        StringComparison.Ordinal
+                    )
+                );
+        }
+        finally
+        {
+            Directory.Delete(fixture.RootDirectory, recursive: true);
+        }
+    }
+
+    [Test]
+    public async Task Should_ignore_multiline_commented_razor_namespace_declaration_when_deriving_logical_name()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false,
+            trainTrackingExampleSource: """
+            @*
+              @namespace Samples.Commented
+            *@
+
+            <div>tracking</div>
+            """
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+
+            // assert
+            capturedItems
+                .Should()
+                .Contain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:DocsSite.Sources.TrainTrackingExample:TrainTrackingExample.razor|",
+                        StringComparison.Ordinal
+                    )
+                );
+            capturedItems
+                .Should()
+                .NotContain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Commented.TrainTrackingExample:TrainTrackingExample.razor|",
+                        StringComparison.Ordinal
+                    )
+                );
+        }
+        finally
+        {
+            Directory.Delete(fixture.RootDirectory, recursive: true);
+        }
+    }
+
+    [Test]
+    public void Should_cache_pure_csharp_file_discovery_per_search_directory()
+    {
+        // arrange
+        var targetsPath = LocateRepositoryFile("src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.targets");
+        var targetsContent = File.ReadAllText(targetsPath);
+
+        // act
+        var usesPerTypeScan = targetsContent.Contains(
+            "Directory.GetFiles(searchDir, typeName + \".cs\", SearchOption.AllDirectories)",
+            StringComparison.Ordinal
+        );
+        var usesDirectoryWideScan = targetsContent.Contains(
+            "Directory.GetFiles(searchDir, \"*.cs\", SearchOption.AllDirectories)",
+            StringComparison.Ordinal
+        );
+
+        // assert
+        usesPerTypeScan.Should().BeFalse();
+        usesDirectoryWideScan.Should().BeTrue();
+    }
+
     private static async Task ExecuteExtractSourcesTargetAsync(string projectPath)
     {
         // arrange
@@ -277,7 +489,9 @@ public class BuildTargetsTests
 
     private static async Task<ExtractionFixture> CreateExtractionFixtureAsync(
         bool includeReferencedProject,
-        bool includeDuplicatePureCsType
+        bool includeDuplicatePureCsType,
+        string? trainCatalogSource = null,
+        string? trainTrackingExampleSource = null
     )
     {
         // arrange
@@ -335,15 +549,23 @@ public class BuildTargetsTests
             """
         );
         await File.WriteAllTextAsync(
+            Path.Combine(projectDirectory, "Sources", "TrainTrackingExample.razor"),
+            trainTrackingExampleSource
+                ?? """
+                <div>tracking</div>
+                """
+        );
+        await File.WriteAllTextAsync(
             Path.Combine(projectDirectory, "Sources", "TrainCatalog.cs"),
-            """
-            namespace Samples.Trains;
+            trainCatalogSource
+                ?? """
+                namespace Samples.Trains;
 
-            public class TrainCatalog
-            {
-                public const string Marker = "PRIMARY";
-            }
-            """
+                public class TrainCatalog
+                {
+                    public const string Marker = "PRIMARY";
+                }
+                """
         );
 
         if (includeReferencedProject)
