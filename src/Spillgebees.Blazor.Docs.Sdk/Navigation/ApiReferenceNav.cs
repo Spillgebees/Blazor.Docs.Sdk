@@ -5,11 +5,19 @@ using Spillgebees.Blazor.Docs.Sdk.Build;
 /// <summary>
 /// Provides methods for building API reference navigation pages from an <see cref="ApiManifest"/>.
 /// </summary>
+/// <remarks>
+/// Generated API links use relative href values (for example, <c>api/Namespace.TypeName</c>). When
+/// hosting docs under a subpath, configure the application base href to that subpath so API links
+/// resolve correctly.
+/// </remarks>
 public static class ApiReferenceNav
 {
     /// <summary>
     /// Converts an <see cref="ApiManifest"/> into a sorted list of <see cref="NavPage"/> entries.
     /// </summary>
+    /// <remarks>
+    /// The generated <see cref="NavPage.Href"/> values are relative paths under <c>api/</c>.
+    /// </remarks>
     /// <param name="manifest">The API manifest to convert.</param>
     /// <returns>
     /// A read-only list of <see cref="NavPage"/> instances, one per type, ordered by title.
