@@ -17,8 +17,8 @@
 
     <!-- Testing -->
     <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
-    <PackageVersion Include="bunit" Version="2.6.2" />
-    <PackageVersion Include="TUnit.Core" Version="1.19.22" />
-    <PackageVersion Include="TUnit.Engine" Version="1.19.22" />
+    <PackageVersion Include="bunit" Version="2.7.2" />
+    <PackageVersion Include="TUnit.Core" Version="1.39.0" />
+    <PackageVersion Include="TUnit.Engine" Version="1.39.0" />
   </ItemGroup>
 </Project>
