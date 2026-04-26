@@ -94,10 +94,82 @@ if (ReferencedProjectDirs != null)
 
 var namespaceRe = new Regex(@"^[ \t]*@namespace\s+([\w.]+)", RegexOptions.Multiline);
 var csNamespaceRe = new Regex(@"^[ \t]*namespace\s+([\w.]+)", RegexOptions.Multiline);
+// comment stripping intentionally simple, only for namespace-line extraction, not general parsing
 var csBlockCommentRe = new Regex(@"/\*.*?\*/", RegexOptions.Singleline);
 var csLineCommentRe = new Regex(@"//.*$", RegexOptions.Multiline);
 var razorCommentBlockRe = new Regex(@"@\*.*?\*@", RegexOptions.Singleline);
 var htmlCommentBlockRe = new Regex(@"<!--.*?-->", RegexOptions.Singleline);
+var excludedDirectoryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+{
+    "bin",
+    "obj",
+    "node_modules",
+    ".git",
+    ".vs"
+};
+
+IEnumerable<string> EnumerateFilesByPattern(string rootDir, string searchPattern)
+{
+    if (string.IsNullOrWhiteSpace(rootDir) || !Directory.Exists(rootDir))
+    {
+        yield break;
+    }
+
+    var pendingDirectories = new Stack<string>();
+    pendingDirectories.Push(rootDir);
+
+    while (pendingDirectories.Count > 0)
+    {
+        var currentDirectory = pendingDirectories.Pop();
+
+        string[] childDirectories;
+        try
+        {
+            childDirectories = Directory.GetDirectories(currentDirectory);
+        }
+        catch
+        {
+            continue;
+        }
+
+        foreach (var childDirectory in childDirectories)
+        {
+            var childDirectoryName = Path.GetFileName(childDirectory);
+            if (excludedDirectoryNames.Contains(childDirectoryName))
+            {
+                continue;
+            }
+
+            pendingDirectories.Push(childDirectory);
+        }
+
+        string[] matchingFiles;
+        try
+        {
+            matchingFiles = Directory.GetFiles(currentDirectory, searchPattern, SearchOption.TopDirectoryOnly);
+        }
+        catch
+        {
+            continue;
+        }
+
+        foreach (var matchingFile in matchingFiles)
+        {
+            yield return matchingFile;
+        }
+    }
+}
+
+bool IsGeneratedPureCsCandidate(string filePath)
+{
+    var fileName = Path.GetFileName(filePath);
+    return fileName.EndsWith(".AssemblyInfo.cs", StringComparison.OrdinalIgnoreCase)
+        || fileName.EndsWith(".GlobalUsings.g.cs", StringComparison.OrdinalIgnoreCase)
+        || fileName.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase)
+        || fileName.EndsWith(".g.i.cs", StringComparison.OrdinalIgnoreCase)
+        || fileName.EndsWith(".designer.cs", StringComparison.OrdinalIgnoreCase);
+}
+
 var outputDir = Path.Combine(IntermediateDir, "DocsSdk", "sources");
 Directory.CreateDirectory(outputDir);
 
@@ -108,9 +180,14 @@ var pureCsFilesBySearchDir = new Dictionary<string, Dictionary<string, List<stri
 foreach (var searchDir in searchDirs)
 {
     var filesByName = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-    var pureCsFiles = Directory.GetFiles(searchDir, "*.cs", SearchOption.AllDirectories);
+    var pureCsFiles = EnumerateFilesByPattern(searchDir, "*.cs");
     foreach (var pureCsFile in pureCsFiles)
     {
+        if (IsGeneratedPureCsCandidate(pureCsFile))
+        {
+            continue;
+        }
+
         var fileName = Path.GetFileName(pureCsFile);
         if (!filesByName.TryGetValue(fileName, out var matchingFiles))
         {
@@ -129,7 +206,7 @@ foreach (var typeName in referencedTypes)
     // Search for matching .razor and .razor.cs files
     foreach (var searchDir in searchDirs)
     {
-        var razorFiles = Directory.GetFiles(searchDir, typeName + ".razor", SearchOption.AllDirectories);
+        var razorFiles = EnumerateFilesByPattern(searchDir, typeName + ".razor");
         foreach (var razorFile in razorFiles)
         {
             // Determine full type name
