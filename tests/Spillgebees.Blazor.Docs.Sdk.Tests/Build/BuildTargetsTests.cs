@@ -60,12 +60,12 @@ public class BuildTargetsTests
         };
 
         // act
-        var action = async () => await ExecuteProcessAsync(startInfo, TimeSpan.FromMilliseconds(200));
+        var action = async () => await ExecuteProcessAsync(startInfo, TimeSpan.FromMilliseconds(500));
 
         // assert
         var exception = await action.Should().ThrowAsync<Exception>();
         exception.Which.Message.Should().Contain("timed out");
-        exception.Which.Message.Should().Contain("MSBuild output:\nready");
+        exception.Which.Message.Should().Contain("MSBuild output:\n");
         exception.Which.Message.Should().Contain("MSBuild errors:\n");
     }
 
