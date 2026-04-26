@@ -16,7 +16,7 @@ public static class ApiReferenceNav
     /// </returns>
     public static IReadOnlyList<NavPage> FromManifest(ApiManifest manifest) =>
         manifest
-            .Types.Select(t => new NavPage(t.Name, $"/api/{t.FullName}"))
+            .Types.Select(t => new NavPage(t.Name, $"api/{t.FullName}"))
             .OrderBy(p => p.Title, StringComparer.Ordinal)
             .ToList();
 
