@@ -10,7 +10,7 @@ public static partial class SourceExtractor
     [GeneratedRegex("""TComponent="(\w+)""")]
     private static partial Regex TComponentRegex();
 
-    [GeneratedRegex("""typeof\((\w+)\)""")]
+    [GeneratedRegex("""typeof\(([\w.]+)\)""")]
     private static partial Regex TypeOfRegex();
 
     [GeneratedRegex(@"AdditionalSources=""@\((.*?)\)""")]
@@ -33,7 +33,10 @@ public static partial class SourceExtractor
             var inner = additionalMatch.Groups[1].Value;
             foreach (Match typeMatch in TypeOfRegex().Matches(inner))
             {
-                types.Add(typeMatch.Groups[1].Value);
+                var fullTypeName = typeMatch.Groups[1].Value;
+                var segments = fullTypeName.Split('.');
+                var simpleTypeName = segments[^1];
+                types.Add(simpleTypeName);
             }
         }
 

@@ -105,9 +105,9 @@ public class CodeBlockTests
         var files = new Dictionary<string, string> { ["Counter.razor.cs"] = "public partial class Counter {}" };
 
         // act
-        var cut = ctx.Render<CodeBlock>(parameters => parameters
-            .Add(p => p.Files, files)
-            .Add(p => p.Language, "razor"));
+        var cut = ctx.Render<CodeBlock>(parameters =>
+            parameters.Add(p => p.Files, files).Add(p => p.Language, "razor")
+        );
 
         // assert
         var code = cut.Find("pre code");
@@ -124,9 +124,9 @@ public class CodeBlockTests
         var files = new Dictionary<string, string> { ["Counter.razor"] = "<h1>Hello</h1>" };
 
         // act
-        var cut = ctx.Render<CodeBlock>(parameters => parameters
-            .Add(p => p.Files, files)
-            .Add(p => p.Language, "razor"));
+        var cut = ctx.Render<CodeBlock>(parameters =>
+            parameters.Add(p => p.Files, files).Add(p => p.Language, "razor")
+        );
 
         // assert
         var code = cut.Find("pre code");
@@ -143,13 +143,13 @@ public class CodeBlockTests
         var files = new Dictionary<string, string>
         {
             ["Counter.razor"] = "<h1>Hello</h1>",
-            ["Counter.razor.cs"] = "public partial class Counter {}"
+            ["Counter.razor.cs"] = "public partial class Counter {}",
         };
 
         // act
-        var cut = ctx.Render<CodeBlock>(parameters => parameters
-            .Add(p => p.Files, files)
-            .Add(p => p.Language, "razor"));
+        var cut = ctx.Render<CodeBlock>(parameters =>
+            parameters.Add(p => p.Files, files).Add(p => p.Language, "razor")
+        );
 
         // assert - first tab is razor
         var code = cut.Find("pre code");
@@ -191,9 +191,9 @@ public class CodeBlockTests
         var files = new Dictionary<string, string> { ["script.py"] = "print('hello')" };
 
         // act
-        var cut = ctx.Render<CodeBlock>(parameters => parameters
-            .Add(p => p.Files, files)
-            .Add(p => p.Language, "python"));
+        var cut = ctx.Render<CodeBlock>(parameters =>
+            parameters.Add(p => p.Files, files).Add(p => p.Language, "python")
+        );
 
         // assert
         var code = cut.Find("pre code");

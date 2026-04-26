@@ -4,9 +4,9 @@
     Packed into build/ (not buildTransitive/) so they only run in projects
     that directly reference the SDK package.
 
-    Both targets run BeforeTargets="AssignTargetPaths" so that dynamically added
-    EmbeddedResource items are picked up by the resource pipeline before
-    PrepareResourceNames snapshots them for CoreCompile.
+    Both targets run BeforeTargets="PrepareResourceNames;AssignTargetPaths" so
+    dynamically added EmbeddedResource items are included before resource name
+    snapshotting and still execute early in the item pipeline.
 
     Two targets:
       1. DocsSdk_ExtractSources  — scans .razor files for ExampleView<TComponent>
@@ -43,7 +43,7 @@
         <![CDATA[
 var tComponentRe = new Regex(@"TComponent=""(\w+)""");
 var additionalSourcesRe = new Regex(@"AdditionalSources=""@\((.*?)\)""");
-var typeOfRe = new Regex(@"typeof\((\w+)\)");
+var typeOfRe = new Regex(@"typeof\(([\w.]+)\)");
 
 // Collect all simple type names referenced from ExampleView usages
 var referencedTypes = new HashSet<string>();
@@ -58,7 +58,11 @@ if (RazorFiles != null)
         {
             var inner = am.Groups[1].Value;
             foreach (Match tm in typeOfRe.Matches(inner))
-                referencedTypes.Add(tm.Groups[1].Value);
+            {
+                var fullTypeName = tm.Groups[1].Value;
+                var segments = fullTypeName.Split('.');
+                referencedTypes.Add(segments[segments.Length - 1]);
+            }
         }
     }
 }
@@ -88,25 +92,128 @@ if (ReferencedProjectDirs != null)
     }
 }
 
-var namespaceRe = new Regex(@"@namespace\s+([\w.]+)");
-var csNamespaceRe = new Regex(@"namespace\s+([\w.]+)");
+var namespaceRe = new Regex(@"^[ \t]*@namespace\s+([\w.]+)", RegexOptions.Multiline);
+var csNamespaceRe = new Regex(@"^[ \t]*namespace\s+([\w.]+)", RegexOptions.Multiline);
+// comment stripping intentionally simple, only for namespace-line extraction, not general parsing
+var csBlockCommentRe = new Regex(@"/\*.*?\*/", RegexOptions.Singleline);
+var csLineCommentRe = new Regex(@"//.*$", RegexOptions.Multiline);
+var razorCommentBlockRe = new Regex(@"@\*.*?\*@", RegexOptions.Singleline);
+var htmlCommentBlockRe = new Regex(@"<!--.*?-->", RegexOptions.Singleline);
+var excludedDirectoryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+{
+    "bin",
+    "obj",
+    "node_modules",
+    ".git",
+    ".vs"
+};
+
+IEnumerable<string> EnumerateFilesByPattern(string rootDir, string searchPattern)
+{
+    if (string.IsNullOrWhiteSpace(rootDir) || !Directory.Exists(rootDir))
+    {
+        yield break;
+    }
+
+    var pendingDirectories = new Stack<string>();
+    pendingDirectories.Push(rootDir);
+
+    while (pendingDirectories.Count > 0)
+    {
+        var currentDirectory = pendingDirectories.Pop();
+
+        string[] childDirectories;
+        try
+        {
+            childDirectories = Directory.GetDirectories(currentDirectory);
+        }
+        catch
+        {
+            continue;
+        }
+
+        foreach (var childDirectory in childDirectories)
+        {
+            var childDirectoryName = Path.GetFileName(childDirectory);
+            if (excludedDirectoryNames.Contains(childDirectoryName))
+            {
+                continue;
+            }
+
+            pendingDirectories.Push(childDirectory);
+        }
+
+        string[] matchingFiles;
+        try
+        {
+            matchingFiles = Directory.GetFiles(currentDirectory, searchPattern, SearchOption.TopDirectoryOnly);
+        }
+        catch
+        {
+            continue;
+        }
+
+        foreach (var matchingFile in matchingFiles)
+        {
+            yield return matchingFile;
+        }
+    }
+}
+
+bool IsGeneratedPureCsCandidate(string filePath)
+{
+    var fileName = Path.GetFileName(filePath);
+    return fileName.EndsWith(".AssemblyInfo.cs", StringComparison.OrdinalIgnoreCase)
+        || fileName.EndsWith(".GlobalUsings.g.cs", StringComparison.OrdinalIgnoreCase)
+        || fileName.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase)
+        || fileName.EndsWith(".g.i.cs", StringComparison.OrdinalIgnoreCase)
+        || fileName.EndsWith(".designer.cs", StringComparison.OrdinalIgnoreCase);
+}
+
 var outputDir = Path.Combine(IntermediateDir, "DocsSdk", "sources");
 Directory.CreateDirectory(outputDir);
 
 var results = new List<Microsoft.Build.Framework.ITaskItem>();
+var embeddedLogicalNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+var pureCsFilesBySearchDir = new Dictionary<string, Dictionary<string, List<string>>>(StringComparer.OrdinalIgnoreCase);
+
+foreach (var searchDir in searchDirs)
+{
+    var filesByName = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+    var pureCsFiles = EnumerateFilesByPattern(searchDir, "*.cs");
+    foreach (var pureCsFile in pureCsFiles)
+    {
+        if (IsGeneratedPureCsCandidate(pureCsFile))
+        {
+            continue;
+        }
+
+        var fileName = Path.GetFileName(pureCsFile);
+        if (!filesByName.TryGetValue(fileName, out var matchingFiles))
+        {
+            matchingFiles = new List<string>();
+            filesByName[fileName] = matchingFiles;
+        }
+
+        matchingFiles.Add(pureCsFile);
+    }
+
+    pureCsFilesBySearchDir[searchDir] = filesByName;
+}
 
 foreach (var typeName in referencedTypes)
 {
     // Search for matching .razor and .razor.cs files
     foreach (var searchDir in searchDirs)
     {
-        var razorFiles = Directory.GetFiles(searchDir, typeName + ".razor", SearchOption.AllDirectories);
+        var razorFiles = EnumerateFilesByPattern(searchDir, typeName + ".razor");
         foreach (var razorFile in razorFiles)
         {
             // Determine full type name
             var razorContent = File.ReadAllText(razorFile);
+            var cleanedRazorContent = htmlCommentBlockRe.Replace(razorCommentBlockRe.Replace(razorContent, ""), "");
             string fullTypeName;
-            var nsMatch = namespaceRe.Match(razorContent);
+            var nsMatch = namespaceRe.Match(cleanedRazorContent);
             if (nsMatch.Success)
             {
                 fullTypeName = nsMatch.Groups[1].Value + "." + typeName;
@@ -122,9 +229,15 @@ foreach (var typeName in referencedTypes)
 
             // Copy .razor file
             var destRazor = Path.Combine(outputDir, fullTypeName + "." + typeName + ".razor");
+            var razorLogicalName = "SourceEmbed:" + fullTypeName + ":" + typeName + ".razor";
+            if (!embeddedLogicalNames.Add(razorLogicalName))
+            {
+                continue;
+            }
+
             File.Copy(razorFile, destRazor, true);
             var razorItem = new Microsoft.Build.Utilities.TaskItem(destRazor);
-            razorItem.SetMetadata("LogicalName", "SourceEmbed:" + fullTypeName + ":" + typeName + ".razor");
+            razorItem.SetMetadata("LogicalName", razorLogicalName);
             results.Add(razorItem);
 
             Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
@@ -134,15 +247,67 @@ foreach (var typeName in referencedTypes)
             var csFile = razorFile + ".cs";
             if (File.Exists(csFile))
             {
+                var csLogicalName = "SourceEmbed:" + fullTypeName + ":" + typeName + ".razor.cs";
+                if (!embeddedLogicalNames.Add(csLogicalName))
+                {
+                    continue;
+                }
+
                 var destCs = Path.Combine(outputDir, fullTypeName + "." + typeName + ".razor.cs");
                 File.Copy(csFile, destCs, true);
                 var csItem = new Microsoft.Build.Utilities.TaskItem(destCs);
-                csItem.SetMetadata("LogicalName", "SourceEmbed:" + fullTypeName + ":" + typeName + ".razor.cs");
+                csItem.SetMetadata("LogicalName", csLogicalName);
                 results.Add(csItem);
 
                 Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
                     "[Docs SDK] Embedded source: " + fullTypeName + ":" + typeName + ".razor.cs");
             }
+
+        }
+
+        // Check for pure .cs source file with matching type name
+        var pureCsFiles = new List<string>();
+        if (pureCsFilesBySearchDir.TryGetValue(searchDir, out var filesByName))
+        {
+            if (filesByName.TryGetValue(typeName + ".cs", out var matchingFiles))
+            {
+                pureCsFiles = matchingFiles;
+            }
+        }
+
+        foreach (var pureCsFile in pureCsFiles)
+        {
+            var csContent = File.ReadAllText(pureCsFile);
+            var cleanedCsContent = csLineCommentRe.Replace(csBlockCommentRe.Replace(csContent, ""), "");
+            string fullCsTypeName;
+            var csNsMatch = csNamespaceRe.Match(cleanedCsContent);
+            if (csNsMatch.Success)
+            {
+                fullCsTypeName = csNsMatch.Groups[1].Value + "." + typeName;
+            }
+            else
+            {
+                var relCsPath = pureCsFile.Substring(searchDir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var relCsDir = Path.GetDirectoryName(relCsPath) ?? "";
+                var nsPart = relCsDir.Replace(Path.DirectorySeparatorChar, '.').Replace(Path.AltDirectorySeparatorChar, '.');
+                fullCsTypeName = string.IsNullOrEmpty(nsPart) ? RootNamespace + "." + typeName : RootNamespace + "." + nsPart + "." + typeName;
+            }
+
+            var destPureCs = Path.Combine(outputDir, fullCsTypeName + "." + typeName + ".cs");
+            var pureCsLogicalName = "SourceEmbed:" + fullCsTypeName + ":" + typeName + ".cs";
+            if (!embeddedLogicalNames.Add(pureCsLogicalName))
+            {
+                continue;
+            }
+
+            File.Copy(pureCsFile, destPureCs, true);
+
+            var pureCsItem = new Microsoft.Build.Utilities.TaskItem(destPureCs);
+            pureCsItem.SetMetadata("LogicalName", pureCsLogicalName);
+            results.Add(pureCsItem);
+
+            Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
+                "[Docs SDK] Embedded source: " + fullCsTypeName + ":" + typeName + ".cs");
         }
     }
 }
@@ -153,7 +318,11 @@ EmbeddedSources = results.ToArray();
     </Task>
   </UsingTask>
 
-  <Target Name="DocsSdk_ExtractSources" BeforeTargets="AssignTargetPaths" DependsOnTargets="ResolveProjectReferences">
+  <Target
+    Name="DocsSdk_ExtractSources"
+    BeforeTargets="PrepareResourceNames;AssignTargetPaths"
+    DependsOnTargets="ResolveProjectReferences"
+  >
     <ItemGroup>
       <_DocsSdk_RazorFiles Include="$(MSBuildProjectDirectory)/**/*.razor" />
       <_DocsSdk_ReferencedProjectDirs Include="@(_MSBuildProjectReferenceExistent)" />
@@ -452,7 +621,11 @@ GeneratedManifests = results.ToArray();
     </Task>
   </UsingTask>
 
-  <Target Name="DocsSdk_GenerateApiManifest" BeforeTargets="AssignTargetPaths" DependsOnTargets="ResolveAssemblyReferences">
+  <Target
+    Name="DocsSdk_GenerateApiManifest"
+    BeforeTargets="PrepareResourceNames;AssignTargetPaths"
+    DependsOnTargets="ResolveAssemblyReferences"
+  >
     <DocsSdk_GenerateApiManifestTask ReferencePaths="@(ReferencePath)" IntermediateDir="$(BaseIntermediateOutputPath)">
       <Output TaskParameter="GeneratedManifests" ItemName="_DocsSdk_GeneratedManifests" />
     </DocsSdk_GenerateApiManifestTask>

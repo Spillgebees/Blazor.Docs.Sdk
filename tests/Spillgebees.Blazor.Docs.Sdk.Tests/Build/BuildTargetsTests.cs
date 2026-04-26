@@ -1,0 +1,830 @@
+using System.Diagnostics;
+using System.Xml.Linq;
+using AwesomeAssertions;
+
+namespace Spillgebees.Blazor.Docs.Sdk.Tests.Build;
+
+public class BuildTargetsTests
+{
+    [Test]
+    public void Should_schedule_source_extraction_before_prepare_resource_names_and_assign_target_paths()
+    {
+        // arrange
+        var targetsPath = LocateRepositoryFile("src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.targets");
+        var document = XDocument.Load(targetsPath);
+        var sourceTarget = document
+            .Root!.Elements("Target")
+            .Single(x => x.Attribute("Name")?.Value == "DocsSdk_ExtractSources");
+        var beforeTargets = sourceTarget.Attribute("BeforeTargets")?.Value ?? string.Empty;
+
+        // act
+        var configuredTargets = beforeTargets
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // assert
+        configuredTargets.Should().BeEquivalentTo(["PrepareResourceNames", "AssignTargetPaths"]);
+    }
+
+    [Test]
+    public void Should_schedule_api_manifest_generation_before_prepare_resource_names_and_assign_target_paths()
+    {
+        // arrange
+        var targetsPath = LocateRepositoryFile("src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.targets");
+        var document = XDocument.Load(targetsPath);
+        var apiManifestTarget = document
+            .Root!.Elements("Target")
+            .Single(x => x.Attribute("Name")?.Value == "DocsSdk_GenerateApiManifest");
+        var beforeTargets = apiManifestTarget.Attribute("BeforeTargets")?.Value ?? string.Empty;
+
+        // act
+        var configuredTargets = beforeTargets
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // assert
+        configuredTargets.Should().BeEquivalentTo(["PrepareResourceNames", "AssignTargetPaths"]);
+    }
+
+    [Test]
+    public async Task Should_fail_with_timeout_and_include_captured_output()
+    {
+        // arrange
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "bash",
+            Arguments = "-lc \"echo ready; sleep 5\"",
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+
+        // act
+        var action = async () => await ExecuteProcessAsync(startInfo, TimeSpan.FromMilliseconds(200));
+
+        // assert
+        var exception = await action.Should().ThrowAsync<Exception>();
+        exception.Which.Message.Should().Contain("timed out");
+        exception.Which.Message.Should().Contain("MSBuild output:\nready");
+        exception.Which.Message.Should().Contain("MSBuild errors:\n");
+    }
+
+    [Test]
+    public async Task Should_fail_with_non_zero_exit_and_include_captured_output()
+    {
+        // arrange
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "bash",
+            Arguments = "-lc \"echo out; echo err 1>&2; exit 17\"",
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+
+        // act
+        var action = async () => await ExecuteProcessAsync(startInfo, TimeSpan.FromSeconds(5));
+
+        // assert
+        var exception = await action.Should().ThrowAsync<Exception>();
+        exception.Which.Message.Should().Contain("exited with code 17");
+        exception.Which.Message.Should().Contain("MSBuild output:\nout");
+        exception.Which.Message.Should().Contain("MSBuild errors:\nerr");
+    }
+
+    [Test]
+    public async Task Should_extract_pure_csharp_additional_sources_with_fully_qualified_typeof()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+            var embeddedSourcePath = Path.Combine(
+                fixture.ProjectDirectory,
+                "obj",
+                "DocsSdk",
+                "sources",
+                "Samples.Trains.TrainCatalog.TrainCatalog.cs"
+            );
+            var embeddedSourceContent = await File.ReadAllTextAsync(embeddedSourcePath);
+
+            // assert
+            capturedItems
+                .Should()
+                .Contain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Trains.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                );
+            embeddedSourceContent.Should().Contain("public const string Marker = \"PRIMARY\";");
+        }
+        finally
+        {
+            TryDeleteDirectory(fixture.RootDirectory);
+        }
+    }
+
+    [Test]
+    public async Task Should_not_overwrite_destination_source_when_duplicate_logical_name_is_discovered()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: true,
+            includeDuplicatePureCsType: true
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+            var embeddedSourcePath = Path.Combine(
+                fixture.ProjectDirectory,
+                "obj",
+                "DocsSdk",
+                "sources",
+                "Samples.Trains.TrainCatalog.TrainCatalog.cs"
+            );
+            var embeddedSourceContent = await File.ReadAllTextAsync(embeddedSourcePath);
+
+            // assert
+            capturedItems
+                .Count(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Trains.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                )
+                .Should()
+                .Be(1);
+            embeddedSourceContent.Should().Contain("public const string Marker = \"PRIMARY\";");
+            embeddedSourceContent.Should().NotContain("public const string Marker = \"SECONDARY\";");
+        }
+        finally
+        {
+            TryDeleteDirectory(fixture.RootDirectory);
+        }
+    }
+
+    [Test]
+    public async Task Should_ignore_commented_csharp_namespace_declaration_when_deriving_logical_name()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false,
+            trainCatalogSource: """
+            // namespace Samples.Commented;
+
+            public class TrainCatalog
+            {
+                public const string Marker = "PRIMARY";
+            }
+            """
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+
+            // assert
+            capturedItems
+                .Should()
+                .Contain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:DocsSite.Sources.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                );
+            capturedItems
+                .Should()
+                .NotContain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Commented.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                );
+        }
+        finally
+        {
+            TryDeleteDirectory(fixture.RootDirectory);
+        }
+    }
+
+    [Test]
+    public async Task Should_ignore_multiline_commented_csharp_namespace_declaration_when_deriving_logical_name()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false,
+            trainCatalogSource: """
+            /*
+               namespace Samples.Commented;
+            */
+
+            public class TrainCatalog
+            {
+                public const string Marker = "PRIMARY";
+            }
+            """
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+
+            // assert
+            capturedItems
+                .Should()
+                .Contain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:DocsSite.Sources.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                );
+            capturedItems
+                .Should()
+                .NotContain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Commented.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                );
+        }
+        finally
+        {
+            TryDeleteDirectory(fixture.RootDirectory);
+        }
+    }
+
+    [Test]
+    public async Task Should_ignore_commented_razor_namespace_declaration_when_deriving_logical_name()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false,
+            trainTrackingExampleSource: """
+            @* @namespace Samples.Commented *@
+
+            <div>tracking</div>
+            """
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+
+            // assert
+            capturedItems
+                .Should()
+                .Contain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:DocsSite.Sources.TrainTrackingExample:TrainTrackingExample.razor|",
+                        StringComparison.Ordinal
+                    )
+                );
+            capturedItems
+                .Should()
+                .NotContain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Commented.TrainTrackingExample:TrainTrackingExample.razor|",
+                        StringComparison.Ordinal
+                    )
+                );
+        }
+        finally
+        {
+            TryDeleteDirectory(fixture.RootDirectory);
+        }
+    }
+
+    [Test]
+    public async Task Should_ignore_multiline_commented_razor_namespace_declaration_when_deriving_logical_name()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false,
+            trainTrackingExampleSource: """
+            @*
+              @namespace Samples.Commented
+            *@
+
+            <div>tracking</div>
+            """
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+
+            // assert
+            capturedItems
+                .Should()
+                .Contain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:DocsSite.Sources.TrainTrackingExample:TrainTrackingExample.razor|",
+                        StringComparison.Ordinal
+                    )
+                );
+            capturedItems
+                .Should()
+                .NotContain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Commented.TrainTrackingExample:TrainTrackingExample.razor|",
+                        StringComparison.Ordinal
+                    )
+                );
+        }
+        finally
+        {
+            TryDeleteDirectory(fixture.RootDirectory);
+        }
+    }
+
+    [Test]
+    public async Task Should_ignore_build_artifact_directories_when_discovering_sources()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false,
+            includePrimaryTrainCatalogSource: false,
+            includePrimaryTrainTrackingExampleSource: false,
+            includeBuildArtifactSources: true
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+
+            // assert
+            capturedItems.Should().NotContain(line => line.StartsWith("SourceEmbed:", StringComparison.Ordinal));
+        }
+        finally
+        {
+            TryDeleteDirectory(fixture.RootDirectory);
+        }
+    }
+
+    [Test]
+    public void Should_ignore_io_exception_when_trying_to_delete_directory()
+    {
+        // arrange
+        var action = () => TryDeleteDirectory("/tmp/non-existent", (_, _) => throw new IOException("file lock"));
+
+        // act
+
+        // assert
+        action.Should().NotThrow();
+    }
+
+    [Test]
+    public void Should_ignore_unauthorized_access_exception_when_trying_to_delete_directory()
+    {
+        // arrange
+        var action = () =>
+            TryDeleteDirectory("/tmp/non-existent", (_, _) => throw new UnauthorizedAccessException("denied"));
+
+        // act
+
+        // assert
+        action.Should().NotThrow();
+    }
+
+    [Test]
+    public void Should_rethrow_unexpected_exception_when_trying_to_delete_directory()
+    {
+        // arrange
+        var action = () =>
+            TryDeleteDirectory("/tmp/non-existent", (_, _) => throw new InvalidOperationException("boom"));
+
+        // act
+
+        // assert
+        action.Should().Throw<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task Should_not_embed_additional_source_when_only_generated_named_csharp_variants_exist()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false,
+            includePrimaryTrainCatalogSource: false,
+            includeGeneratedNamedTrainCatalogSources: true
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+
+            // assert
+            capturedItems
+                .Should()
+                .NotContain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Trains.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                );
+        }
+        finally
+        {
+            TryDeleteDirectory(fixture.RootDirectory);
+        }
+    }
+
+    [Test]
+    public async Task Should_embed_non_generated_additional_source_when_real_csharp_file_exists_beside_generated_variants()
+    {
+        // arrange
+        var fixture = await CreateExtractionFixtureAsync(
+            includeReferencedProject: false,
+            includeDuplicatePureCsType: false,
+            includePrimaryTrainCatalogSource: true,
+            includeGeneratedNamedTrainCatalogSources: true
+        );
+
+        try
+        {
+            // act
+            await ExecuteExtractSourcesTargetAsync(fixture.ProjectPath);
+
+            var capturedItems = await File.ReadAllLinesAsync(fixture.CapturedItemsPath);
+            var embeddedSourcePath = Path.Combine(
+                fixture.ProjectDirectory,
+                "obj",
+                "DocsSdk",
+                "sources",
+                "Samples.Trains.TrainCatalog.TrainCatalog.cs"
+            );
+            var embeddedSourceContent = await File.ReadAllTextAsync(embeddedSourcePath);
+
+            // assert
+            capturedItems
+                .Should()
+                .Contain(line =>
+                    line.StartsWith(
+                        "SourceEmbed:Samples.Trains.TrainCatalog:TrainCatalog.cs|",
+                        StringComparison.Ordinal
+                    )
+                );
+            embeddedSourceContent.Should().Contain("public const string Marker = \"PRIMARY\";");
+            embeddedSourceContent.Should().NotContain("public const string Marker = \"GENERATED\";");
+        }
+        finally
+        {
+            TryDeleteDirectory(fixture.RootDirectory);
+        }
+    }
+
+    private static async Task ExecuteExtractSourcesTargetAsync(string projectPath)
+    {
+        // arrange
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = $"msbuild \"{projectPath}\" -nologo -restore -t:DocsSdk_ExtractSources",
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+
+        // act
+        await ExecuteProcessAsync(startInfo, TimeSpan.FromSeconds(30));
+    }
+
+    private static async Task ExecuteProcessAsync(ProcessStartInfo startInfo, TimeSpan timeout)
+    {
+        // arrange
+        using var process = Process.Start(startInfo);
+        process.Should().NotBeNull();
+
+        var outputTask = process!.StandardOutput.ReadToEndAsync();
+        var errorTask = process.StandardError.ReadToEndAsync();
+        using var cts = new CancellationTokenSource(timeout);
+
+        var timedOut = false;
+        try
+        {
+            await process.WaitForExitAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            timedOut = true;
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+        }
+
+        var output = await outputTask;
+        var error = await errorTask;
+
+        // assert
+        if (timedOut)
+        {
+            throw new InvalidOperationException(
+                $"MSBuild execution timed out after {timeout}. MSBuild output:\n{output}\nMSBuild errors:\n{error}"
+            );
+        }
+
+        process
+            .ExitCode.Should()
+            .Be(
+                0,
+                $"MSBuild process exited with code {process.ExitCode}. MSBuild output:\n{output}\nMSBuild errors:\n{error}"
+            );
+    }
+
+    private static async Task<ExtractionFixture> CreateExtractionFixtureAsync(
+        bool includeReferencedProject,
+        bool includeDuplicatePureCsType,
+        bool includePrimaryTrainCatalogSource = true,
+        bool includePrimaryTrainTrackingExampleSource = true,
+        bool includeBuildArtifactSources = false,
+        bool includeGeneratedNamedTrainCatalogSources = false,
+        string? trainCatalogSource = null,
+        string? trainTrackingExampleSource = null
+    )
+    {
+        var rootDirectory = Path.Combine(
+            Path.GetTempPath(),
+            "docs-sdk-build-target-tests",
+            Guid.NewGuid().ToString("N")
+        );
+        var projectDirectory = Path.Combine(rootDirectory, "DocsSite");
+        var projectPath = Path.Combine(projectDirectory, "DocsSite.csproj");
+        var capturedItemsPath = Path.Combine(projectDirectory, "obj", "captured-embedded-sources.txt");
+
+        Directory.CreateDirectory(projectDirectory);
+        Directory.CreateDirectory(Path.Combine(projectDirectory, "Docs"));
+        Directory.CreateDirectory(Path.Combine(projectDirectory, "Sources"));
+
+        var targetsPath = LocateRepositoryFile("src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.targets");
+        var normalizedTargetsPath = targetsPath.Replace("\\", "/", StringComparison.Ordinal);
+
+        var projectReferenceXml = string.Empty;
+        if (includeReferencedProject)
+        {
+            projectReferenceXml = """
+                  <ItemGroup>
+                    <ProjectReference Include="../ReferenceLibrary/ReferenceLibrary.csproj" />
+                  </ItemGroup>
+                """;
+        }
+
+        var projectContent = $$"""
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net10.0</TargetFramework>
+                <!-- Sources directory maps into namespace tail for fallback logical names. -->
+                <RootNamespace>DocsSite</RootNamespace>
+              </PropertyGroup>
+            {{projectReferenceXml}}
+              <Import Project="{{normalizedTargetsPath}}" />
+              <Target Name="CaptureDocsSdkEmbeddedSources" AfterTargets="DocsSdk_ExtractSources">
+                <WriteLinesToFile
+                  File="$(BaseIntermediateOutputPath)captured-embedded-sources.txt"
+                  Lines="@(_DocsSdk_EmbeddedSources->'%(LogicalName)|%(Identity)')"
+                  Overwrite="true" />
+              </Target>
+            </Project>
+            """;
+
+        await File.WriteAllTextAsync(projectPath, projectContent);
+        await File.WriteAllTextAsync(
+            Path.Combine(projectDirectory, "Docs", "Example.razor"),
+            """
+            <ExampleView TComponent="TrainTrackingExample"
+                         AdditionalSources="@(typeof(Samples.Trains.TrainCatalog))">
+                <TrainTrackingExample />
+            </ExampleView>
+            """
+        );
+        if (includePrimaryTrainTrackingExampleSource)
+        {
+            await File.WriteAllTextAsync(
+                Path.Combine(projectDirectory, "Sources", "TrainTrackingExample.razor"),
+                trainTrackingExampleSource
+                    ?? """
+                    <div>tracking</div>
+                    """
+            );
+        }
+
+        if (includePrimaryTrainCatalogSource)
+        {
+            await File.WriteAllTextAsync(
+                Path.Combine(projectDirectory, "Sources", "TrainCatalog.cs"),
+                trainCatalogSource
+                    ?? """
+                    namespace Samples.Trains;
+
+                    public class TrainCatalog
+                    {
+                        public const string Marker = "PRIMARY";
+                    }
+                    """
+            );
+        }
+
+        if (includeGeneratedNamedTrainCatalogSources)
+        {
+            await File.WriteAllTextAsync(
+                Path.Combine(projectDirectory, "Sources", "TrainCatalog.g.cs"),
+                """
+                namespace Samples.Trains;
+
+                public partial class TrainCatalog
+                {
+                    public const string Marker = "GENERATED";
+                }
+                """
+            );
+            await File.WriteAllTextAsync(
+                Path.Combine(projectDirectory, "Sources", "TrainCatalog.g.i.cs"),
+                """
+                namespace Samples.Trains;
+
+                public partial class TrainCatalog
+                {
+                    public const string Marker = "GENERATED";
+                }
+                """
+            );
+            await File.WriteAllTextAsync(
+                Path.Combine(projectDirectory, "Sources", "TrainCatalog.designer.cs"),
+                """
+                namespace Samples.Trains;
+
+                public partial class TrainCatalog
+                {
+                    public const string Marker = "GENERATED";
+                }
+                """
+            );
+            await File.WriteAllTextAsync(
+                Path.Combine(projectDirectory, "Sources", "DocsSite.AssemblyInfo.cs"),
+                """
+                [assembly: System.Reflection.AssemblyMetadata("Marker", "GENERATED")]
+                """
+            );
+            await File.WriteAllTextAsync(
+                Path.Combine(projectDirectory, "Sources", "DocsSite.GlobalUsings.g.cs"),
+                """
+                global using System;
+                """
+            );
+        }
+
+        if (includeBuildArtifactSources)
+        {
+            var artifactDirectories = new[]
+            {
+                "obj/Generated",
+                "bin/Generated",
+                "node_modules/cache",
+                ".git/generated",
+                ".vs/generated",
+            };
+            foreach (var artifactDirectory in artifactDirectories)
+            {
+                var fullArtifactDirectory = Path.Combine(projectDirectory, artifactDirectory);
+                Directory.CreateDirectory(fullArtifactDirectory);
+
+                await File.WriteAllTextAsync(
+                    Path.Combine(fullArtifactDirectory, "TrainCatalog.cs"),
+                    """
+                    namespace Samples.Trains;
+
+                    public class TrainCatalog
+                    {
+                        public const string Marker = "ARTIFACT";
+                    }
+                    """
+                );
+
+                await File.WriteAllTextAsync(
+                    Path.Combine(fullArtifactDirectory, "TrainTrackingExample.razor"),
+                    """
+                    @namespace Samples.Artifacts
+
+                    <div>artifact tracking</div>
+                    """
+                );
+            }
+        }
+
+        if (includeReferencedProject)
+        {
+            var referencedProjectDirectory = Path.Combine(rootDirectory, "ReferenceLibrary");
+            Directory.CreateDirectory(referencedProjectDirectory);
+
+            await File.WriteAllTextAsync(
+                Path.Combine(referencedProjectDirectory, "ReferenceLibrary.csproj"),
+                """
+                <Project Sdk="Microsoft.NET.Sdk">
+                  <PropertyGroup>
+                    <TargetFramework>net10.0</TargetFramework>
+                  </PropertyGroup>
+                </Project>
+                """
+            );
+
+            if (includeDuplicatePureCsType)
+            {
+                await File.WriteAllTextAsync(
+                    Path.Combine(referencedProjectDirectory, "TrainCatalog.cs"),
+                    """
+                    namespace Samples.Trains;
+
+                    public class TrainCatalog
+                    {
+                        public const string Marker = "SECONDARY";
+                    }
+                    """
+                );
+            }
+        }
+
+        return new ExtractionFixture(rootDirectory, projectDirectory, projectPath, capturedItemsPath);
+    }
+
+    private sealed record ExtractionFixture(
+        string RootDirectory,
+        string ProjectDirectory,
+        string ProjectPath,
+        string CapturedItemsPath
+    );
+
+    private static void TryDeleteDirectory(
+        string path,
+        Action<string, bool>? deleteDirectory = null,
+        Action<Exception>? logException = null
+    )
+    {
+        try
+        {
+            var delete = deleteDirectory ?? Directory.Delete;
+            delete(path, true);
+        }
+        catch (IOException exception)
+        {
+            logException?.Invoke(exception);
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            logException?.Invoke(exception);
+        }
+    }
+
+    private static string LocateRepositoryFile(string relativePath)
+    {
+        var baseDirectory = AppContext.BaseDirectory;
+        var current = new DirectoryInfo(baseDirectory);
+
+        while (current is not null)
+        {
+            var solutionPath = Path.Combine(current.FullName, "Blazor.Docs.Sdk.slnx");
+            if (File.Exists(solutionPath))
+            {
+                return Path.Combine(current.FullName, relativePath);
+            }
+
+            current = current.Parent;
+        }
+
+        throw new InvalidOperationException("Could not locate repository root from test execution directory.");
+    }
+}

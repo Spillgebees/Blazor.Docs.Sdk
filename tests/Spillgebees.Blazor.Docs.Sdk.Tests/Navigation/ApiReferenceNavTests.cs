@@ -7,7 +7,7 @@ namespace Spillgebees.Blazor.Docs.Sdk.Tests.Navigation;
 public class ApiReferenceNavTests
 {
     [Test]
-    public void Should_generate_nav_pages_from_manifest()
+    public void Should_generate_sorted_relative_nav_pages_from_manifest()
     {
         // arrange
         var manifest = new ApiManifest
@@ -38,7 +38,8 @@ public class ApiReferenceNavTests
         // assert
         pages.Should().HaveCount(2);
         pages[0].Title.Should().Be("SgbMap");
-        pages[0].Href.Should().Be("/api/Spillgebees.Blazor.Map.SgbMap");
+        pages[0].Href.Should().Be("api/Spillgebees.Blazor.Map.SgbMap");
+        pages.Should().OnlyContain(x => !x.Href.StartsWith("/", StringComparison.Ordinal));
     }
 
     [Test]
