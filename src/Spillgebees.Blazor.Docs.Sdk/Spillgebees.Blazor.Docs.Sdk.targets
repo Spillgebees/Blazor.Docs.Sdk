@@ -43,7 +43,7 @@
         <![CDATA[
 var tComponentRe = new Regex(@"TComponent=""(\w+)""");
 var additionalSourcesRe = new Regex(@"AdditionalSources=""@\((.*?)\)""");
-var typeOfRe = new Regex(@"typeof\((\w+)\)");
+var typeOfRe = new Regex(@"typeof\(([\w.]+)\)");
 
 // Collect all simple type names referenced from ExampleView usages
 var referencedTypes = new HashSet<string>();
@@ -58,7 +58,11 @@ if (RazorFiles != null)
         {
             var inner = am.Groups[1].Value;
             foreach (Match tm in typeOfRe.Matches(inner))
-                referencedTypes.Add(tm.Groups[1].Value);
+            {
+                var fullTypeName = tm.Groups[1].Value;
+                var segments = fullTypeName.Split('.');
+                referencedTypes.Add(segments[segments.Length - 1]);
+            }
         }
     }
 }
@@ -94,6 +98,7 @@ var outputDir = Path.Combine(IntermediateDir, "DocsSdk", "sources");
 Directory.CreateDirectory(outputDir);
 
 var results = new List<Microsoft.Build.Framework.ITaskItem>();
+var embeddedLogicalNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
 foreach (var typeName in referencedTypes)
 {
@@ -122,9 +127,15 @@ foreach (var typeName in referencedTypes)
 
             // Copy .razor file
             var destRazor = Path.Combine(outputDir, fullTypeName + "." + typeName + ".razor");
+            var razorLogicalName = "SourceEmbed:" + fullTypeName + ":" + typeName + ".razor";
+            if (!embeddedLogicalNames.Add(razorLogicalName))
+            {
+                continue;
+            }
+
             File.Copy(razorFile, destRazor, true);
             var razorItem = new Microsoft.Build.Utilities.TaskItem(destRazor);
-            razorItem.SetMetadata("LogicalName", "SourceEmbed:" + fullTypeName + ":" + typeName + ".razor");
+            razorItem.SetMetadata("LogicalName", razorLogicalName);
             results.Add(razorItem);
 
             Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
@@ -134,15 +145,58 @@ foreach (var typeName in referencedTypes)
             var csFile = razorFile + ".cs";
             if (File.Exists(csFile))
             {
+                var csLogicalName = "SourceEmbed:" + fullTypeName + ":" + typeName + ".razor.cs";
+                if (!embeddedLogicalNames.Add(csLogicalName))
+                {
+                    continue;
+                }
+
                 var destCs = Path.Combine(outputDir, fullTypeName + "." + typeName + ".razor.cs");
                 File.Copy(csFile, destCs, true);
                 var csItem = new Microsoft.Build.Utilities.TaskItem(destCs);
-                csItem.SetMetadata("LogicalName", "SourceEmbed:" + fullTypeName + ":" + typeName + ".razor.cs");
+                csItem.SetMetadata("LogicalName", csLogicalName);
                 results.Add(csItem);
 
                 Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
                     "[Docs SDK] Embedded source: " + fullTypeName + ":" + typeName + ".razor.cs");
             }
+
+        }
+
+        // Check for pure .cs source file with matching type name
+        var pureCsFiles = Directory.GetFiles(searchDir, typeName + ".cs", SearchOption.AllDirectories);
+        foreach (var pureCsFile in pureCsFiles)
+        {
+            var csContent = File.ReadAllText(pureCsFile);
+            string fullCsTypeName;
+            var csNsMatch = csNamespaceRe.Match(csContent);
+            if (csNsMatch.Success)
+            {
+                fullCsTypeName = csNsMatch.Groups[1].Value + "." + typeName;
+            }
+            else
+            {
+                var relCsPath = pureCsFile.Substring(searchDir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var relCsDir = Path.GetDirectoryName(relCsPath) ?? "";
+                var nsPart = relCsDir.Replace(Path.DirectorySeparatorChar, '.').Replace(Path.AltDirectorySeparatorChar, '.');
+                fullCsTypeName = string.IsNullOrEmpty(nsPart) ? RootNamespace + "." + typeName : RootNamespace + "." + nsPart + "." + typeName;
+            }
+
+            var destPureCs = Path.Combine(outputDir, fullCsTypeName + "." + typeName + ".cs");
+            var pureCsLogicalName = "SourceEmbed:" + fullCsTypeName + ":" + typeName + ".cs";
+            if (!embeddedLogicalNames.Add(pureCsLogicalName))
+            {
+                continue;
+            }
+
+            File.Copy(pureCsFile, destPureCs, true);
+
+            var pureCsItem = new Microsoft.Build.Utilities.TaskItem(destPureCs);
+            pureCsItem.SetMetadata("LogicalName", pureCsLogicalName);
+            results.Add(pureCsItem);
+
+            Log.LogMessage(Microsoft.Build.Framework.MessageImportance.Normal,
+                "[Docs SDK] Embedded source: " + fullCsTypeName + ":" + typeName + ".cs");
         }
     }
 }

@@ -43,6 +43,44 @@ public class SourceExtractorTests
     }
 
     [Test]
+    public void Should_find_additional_sources_type_references_with_fully_qualified_names()
+    {
+        // arrange
+        var razorContent = """
+            <ExampleView TComponent="TrainTrackingExample"
+                         AdditionalSources="@(typeof(Samples.Trains.TrainTrackingPresentation), typeof(Samples.Trains.TrainSampleSimulation))">
+                <TrainTrackingExample />
+            </ExampleView>
+            """;
+
+        // act
+        var types = SourceExtractor.DiscoverReferencedTypes(razorContent);
+
+        // assert
+        types.Should().Contain("TrainTrackingExample");
+        types.Should().Contain("TrainTrackingPresentation");
+        types.Should().Contain("TrainSampleSimulation");
+    }
+
+    [Test]
+    public void Should_not_add_invalid_additional_source_entries_without_typeof()
+    {
+        // arrange
+        var razorContent = """
+            <ExampleView TComponent="TrainTrackingExample"
+                         AdditionalSources="@(new[] { \"TrainTrackingPresentation\" })">
+                <TrainTrackingExample />
+            </ExampleView>
+            """;
+
+        // act
+        var types = SourceExtractor.DiscoverReferencedTypes(razorContent);
+
+        // assert
+        types.Should().ContainSingle().Which.Should().Be("TrainTrackingExample");
+    }
+
+    [Test]
     public void Should_return_source_unchanged_for_csharp()
     {
         // arrange
