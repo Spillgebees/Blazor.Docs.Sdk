@@ -7,7 +7,7 @@ namespace Spillgebees.Blazor.Docs.Sdk.Tests.Navigation;
 public class ApiReferenceNavTests
 {
     [Test]
-    public void Should_generate_nav_pages_from_manifest()
+    public void Should_generate_sorted_relative_nav_pages_from_manifest()
     {
         // arrange
         var manifest = new ApiManifest
@@ -39,34 +39,7 @@ public class ApiReferenceNavTests
         pages.Should().HaveCount(2);
         pages[0].Title.Should().Be("SgbMap");
         pages[0].Href.Should().Be("api/Spillgebees.Blazor.Map.SgbMap");
-    }
-
-    [Test]
-    public void Should_generate_relative_api_links_for_project_subpath_hosting()
-    {
-        // arrange
-        var manifest = new ApiManifest
-        {
-            AssemblyName = "TestLib",
-            Types =
-            [
-                new ApiTypeInfo
-                {
-                    Name = "SgbMap",
-                    FullName = "Spillgebees.Blazor.Map.SgbMap",
-                    Namespace = "Spillgebees.Blazor.Map",
-                    Kind = "class",
-                },
-            ],
-        };
-
-        // act
-        var pages = ApiReferenceNav.FromManifest(manifest);
-
-        // assert
-        pages.Should().ContainSingle();
-        pages[0].Href.Should().NotStartWith("/");
-        pages[0].Href.Should().Be("api/Spillgebees.Blazor.Map.SgbMap");
+        pages.Should().OnlyContain(x => !x.Href.StartsWith("/", StringComparison.Ordinal));
     }
 
     [Test]

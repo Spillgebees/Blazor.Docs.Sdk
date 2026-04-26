@@ -28,7 +28,7 @@ public class BuildTargetsTests
     }
 
     [Test]
-    public void Should_not_configure_source_extraction_with_assign_target_paths_only()
+    public void Should_schedule_source_extraction_before_prepare_resource_names_and_assign_target_paths()
     {
         // arrange
         var targetsPath = LocateRepositoryFile("src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.targets");
@@ -44,7 +44,7 @@ public class BuildTargetsTests
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // assert
-        configuredTargets.Should().NotBeEquivalentTo(["AssignTargetPaths"]);
+        configuredTargets.Should().BeEquivalentTo(["PrepareResourceNames", "AssignTargetPaths"]);
     }
 
     [Test]
@@ -69,7 +69,7 @@ public class BuildTargetsTests
     }
 
     [Test]
-    public void Should_not_configure_api_manifest_generation_with_assign_target_paths_only()
+    public void Should_schedule_api_manifest_generation_before_prepare_resource_names_and_assign_target_paths()
     {
         // arrange
         var targetsPath = LocateRepositoryFile("src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.targets");
@@ -85,7 +85,53 @@ public class BuildTargetsTests
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // assert
-        configuredTargets.Should().NotBeEquivalentTo(["AssignTargetPaths"]);
+        configuredTargets.Should().BeEquivalentTo(["PrepareResourceNames", "AssignTargetPaths"]);
+    }
+
+    [Test]
+    public async Task Should_fail_with_timeout_and_include_captured_output()
+    {
+        // arrange
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "bash",
+            Arguments = "-lc \"echo ready; sleep 5\"",
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+
+        // act
+        var action = async () => await ExecuteProcessAsync(startInfo, TimeSpan.FromMilliseconds(200));
+
+        // assert
+        var exception = await action.Should().ThrowAsync<Exception>();
+        exception.Which.Message.Should().Contain("timed out");
+        exception.Which.Message.Should().Contain("MSBuild output:\nready");
+        exception.Which.Message.Should().Contain("MSBuild errors:\n");
+    }
+
+    [Test]
+    public async Task Should_fail_with_non_zero_exit_and_include_captured_output()
+    {
+        // arrange
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "bash",
+            Arguments = "-lc \"echo out; echo err 1>&2; exit 17\"",
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+
+        // act
+        var action = async () => await ExecuteProcessAsync(startInfo, TimeSpan.FromSeconds(5));
+
+        // assert
+        var exception = await action.Should().ThrowAsync<Exception>();
+        exception.Which.Message.Should().Contain("exited with code 17");
+        exception.Which.Message.Should().Contain("MSBuild output:\nout");
+        exception.Which.Message.Should().Contain("MSBuild errors:\nerr");
     }
 
     [Test]
@@ -185,18 +231,48 @@ public class BuildTargetsTests
         };
 
         // act
+        await ExecuteProcessAsync(startInfo, TimeSpan.FromSeconds(30));
+    }
+
+    private static async Task ExecuteProcessAsync(ProcessStartInfo startInfo, TimeSpan timeout)
+    {
+        // arrange
         using var process = Process.Start(startInfo);
         process.Should().NotBeNull();
 
         var outputTask = process!.StandardOutput.ReadToEndAsync();
         var errorTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync();
+        using var cts = new CancellationTokenSource(timeout);
+
+        var timedOut = false;
+        try
+        {
+            await process.WaitForExitAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            timedOut = true;
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync();
+        }
 
         var output = await outputTask;
         var error = await errorTask;
 
         // assert
-        process.ExitCode.Should().Be(0, $"MSBuild output:\n{output}\nMSBuild errors:\n{error}");
+        if (timedOut)
+        {
+            throw new InvalidOperationException(
+                $"MSBuild execution timed out after {timeout}. MSBuild output:\n{output}\nMSBuild errors:\n{error}"
+            );
+        }
+
+        process
+            .ExitCode.Should()
+            .Be(
+                0,
+                $"MSBuild process exited with code {process.ExitCode}. MSBuild output:\n{output}\nMSBuild errors:\n{error}"
+            );
     }
 
     private static async Task<ExtractionFixture> CreateExtractionFixtureAsync(
