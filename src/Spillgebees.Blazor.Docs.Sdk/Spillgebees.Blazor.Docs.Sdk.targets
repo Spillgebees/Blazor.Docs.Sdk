@@ -4,9 +4,9 @@
     Packed into build/ (not buildTransitive/) so they only run in projects
     that directly reference the SDK package.
 
-    Both targets run BeforeTargets="AssignTargetPaths" so that dynamically added
-    EmbeddedResource items are picked up by the resource pipeline before
-    PrepareResourceNames snapshots them for CoreCompile.
+    Both targets run BeforeTargets="PrepareResourceNames;AssignTargetPaths" so
+    dynamically added EmbeddedResource items are included before resource name
+    snapshotting and still execute early in the item pipeline.
 
     Two targets:
       1. DocsSdk_ExtractSources  — scans .razor files for ExampleView<TComponent>
@@ -153,7 +153,11 @@ EmbeddedSources = results.ToArray();
     </Task>
   </UsingTask>
 
-  <Target Name="DocsSdk_ExtractSources" BeforeTargets="AssignTargetPaths" DependsOnTargets="ResolveProjectReferences">
+  <Target
+    Name="DocsSdk_ExtractSources"
+    BeforeTargets="PrepareResourceNames;AssignTargetPaths"
+    DependsOnTargets="ResolveProjectReferences"
+  >
     <ItemGroup>
       <_DocsSdk_RazorFiles Include="$(MSBuildProjectDirectory)/**/*.razor" />
       <_DocsSdk_ReferencedProjectDirs Include="@(_MSBuildProjectReferenceExistent)" />
@@ -452,7 +456,11 @@ GeneratedManifests = results.ToArray();
     </Task>
   </UsingTask>
 
-  <Target Name="DocsSdk_GenerateApiManifest" BeforeTargets="AssignTargetPaths" DependsOnTargets="ResolveAssemblyReferences">
+  <Target
+    Name="DocsSdk_GenerateApiManifest"
+    BeforeTargets="PrepareResourceNames;AssignTargetPaths"
+    DependsOnTargets="ResolveAssemblyReferences"
+  >
     <DocsSdk_GenerateApiManifestTask ReferencePaths="@(ReferencePath)" IntermediateDir="$(BaseIntermediateOutputPath)">
       <Output TaskParameter="GeneratedManifests" ItemName="_DocsSdk_GeneratedManifests" />
     </DocsSdk_GenerateApiManifestTask>

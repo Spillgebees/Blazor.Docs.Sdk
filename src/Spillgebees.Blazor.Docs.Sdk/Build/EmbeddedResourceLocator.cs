@@ -16,7 +16,8 @@ internal static class EmbeddedResourceLocator
     /// </summary>
     internal static IReadOnlyList<(Assembly Assembly, string ResourceName)> FindResources(
         string prefix,
-        Assembly? primaryAssembly = null)
+        Assembly? primaryAssembly = null
+    )
     {
         var results = new List<(Assembly, string)>();
         var searched = new HashSet<Assembly>();
@@ -104,10 +105,7 @@ internal static class EmbeddedResourceLocator
         return null;
     }
 
-    private static void CollectMatching(
-        Assembly assembly,
-        string prefix,
-        List<(Assembly, string)> results)
+    private static void CollectMatching(Assembly assembly, string prefix, List<(Assembly, string)> results)
     {
         foreach (var name in assembly.GetManifestResourceNames())
         {

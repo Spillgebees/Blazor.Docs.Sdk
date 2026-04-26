@@ -1,0 +1,28 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.13/schema.json",
+	"files": {
+		"includes": [
+			"biome.json",
+			"src/Spillgebees.Blazor.Docs.Sdk.Assets/src/**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc}",
+			"src/Spillgebees.Blazor.Docs.Sdk.Assets/{package.json,tsconfig.json,vite.config.ts}",
+			"!!**/node_modules",
+			"!!**/dist",
+			"!!**/bin",
+			"!!**/obj"
+		]
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"suspicious": {
+				"noTsIgnore": "off"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": false
+	},
+	"assist": {
+		"enabled": false
+	}
+}
