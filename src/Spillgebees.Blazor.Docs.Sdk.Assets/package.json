@@ -2,7 +2,7 @@
   "name": "spillgebees-blazor-docs-sdk-assets",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.12.1",
+  "packageManager": "pnpm@10.33.3",
   "scripts": {
     "build:dev": "vite build --mode development",
     "build:prod": "vite build --mode production"
