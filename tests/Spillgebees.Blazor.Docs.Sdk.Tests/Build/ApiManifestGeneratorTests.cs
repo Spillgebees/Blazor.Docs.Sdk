@@ -81,6 +81,39 @@ public class ApiManifestGeneratorTests
     }
 
     [Test]
+    public void Should_read_xml_doc_summary_for_methods_with_parameters()
+    {
+        // arrange
+        var xmlPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".xml");
+        File.WriteAllText(
+            xmlPath,
+            $$"""
+            <doc>
+              <members>
+                <member name="M:{{typeof(SamplePublicClass).FullName}}.DoWork(System.Int32)">
+                  <summary>Parameterized method docs.</summary>
+                </member>
+              </members>
+            </doc>
+            """
+        );
+
+        try
+        {
+            // act
+            var manifest = ApiManifestGenerator.Generate(typeof(SamplePublicClass).Assembly, xmlPath);
+
+            // assert
+            var type = manifest.Types.First(t => t.Name == "SamplePublicClass");
+            type.Methods.First(m => m.Name == "DoWork").Summary.Should().Be("Parameterized method docs.");
+        }
+        finally
+        {
+            File.Delete(xmlPath);
+        }
+    }
+
+    [Test]
     public void Should_include_enums_with_values()
     {
         // arrange

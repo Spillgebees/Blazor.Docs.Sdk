@@ -1,5 +1,6 @@
 @namespace Spillgebees.Blazor.Docs.Sdk
 @using Microsoft.JSInterop
+@implements IDisposable
 @inject IJSRuntime JS
 
 <div class="code-block">
@@ -66,6 +67,7 @@
     private bool _copied;
     private bool _overflowOpen;
     private ElementReference _codeRef;
+    private readonly CancellationTokenSource _disposeCts = new();
 
     private IReadOnlyList<string> VisibleFiles =>
         Files.Count <= MaxVisibleTabs + 1
@@ -168,8 +170,22 @@
         await JS.InvokeVoidAsync("Spillgebees.DocsSdk.copyToClipboard", content);
         _copied = true;
         StateHasChanged();
-        await Task.Delay(1500);
+        try
+        {
+            await Task.Delay(1500, _disposeCts.Token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
         _copied = false;
         StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
     }
 }

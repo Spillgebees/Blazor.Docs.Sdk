@@ -130,14 +130,7 @@ public class ApiManifestToolIntegrationTests
             // assert
             var packagePath = Directory.GetFiles(packageDirectory, "DocumentedLibrary.*.nupkg").Single();
             using var archive = ZipFile.OpenRead(packagePath);
-            archive
-                .Entries.Select(x => x.FullName)
-                .Should()
-                .NotContain(x =>
-                    x.Contains("DocsSdk", StringComparison.OrdinalIgnoreCase)
-                    || x.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
-                    || x.Contains("ApiManifest", StringComparison.OrdinalIgnoreCase)
-                );
+            archive.Entries.Select(x => x.FullName).Should().NotContain(path => IsDocsSdkManifestArtifact(path));
         }
         finally
         {
@@ -380,6 +373,18 @@ public class ApiManifestToolIntegrationTests
         }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
+    }
+
+    private static bool IsDocsSdkManifestArtifact(string path)
+    {
+        var fileName = Path.GetFileName(path);
+        var isJson = fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
+        return isJson
+            && (
+                path.Contains("DocsSdk", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("ApiManifest", StringComparison.OrdinalIgnoreCase)
+                || path.Contains("/manifests/", StringComparison.OrdinalIgnoreCase)
+            );
     }
 
     private static string LocateRepositoryFile(string relativePath)

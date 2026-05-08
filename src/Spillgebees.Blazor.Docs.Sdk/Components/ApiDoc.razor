@@ -231,7 +231,7 @@
         if (assemblyName is null) return;
 
         var manifest = EmbeddedResourceLocator.LoadApiManifest(assemblyName, Type.Assembly);
-        TypeInfo = manifest is null ? null : ApiReferenceNav.FindType(manifest, Type.FullName ?? Type.Name);
+        TypeInfo = manifest is null ? null : ResolveTypeInfo(manifest, Type);
     }
 
     private void ToggleSection(string sectionName)
@@ -273,4 +273,49 @@
 
     private static MarkupString RenderDocumentation(string? text, string? html) =>
         new(html ?? System.Net.WebUtility.HtmlEncode(text ?? string.Empty));
+
+    private static ApiTypeInfo? ResolveTypeInfo(ApiManifest manifest, Type type)
+    {
+        foreach (var routeValue in GetTypeRouteValues(type))
+        {
+            var typeInfo = ApiReferenceNav.FindType(manifest, routeValue);
+            if (typeInfo is not null)
+            {
+                return typeInfo;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> GetTypeRouteValues(Type type)
+    {
+        if (type.FullName is not null)
+        {
+            yield return type.FullName;
+        }
+
+        yield return type.Name;
+
+        if (!type.IsGenericType && !type.IsGenericTypeDefinition)
+        {
+            yield break;
+        }
+
+        var definition = type.IsGenericTypeDefinition ? type : type.GetGenericTypeDefinition();
+        if (definition.FullName is not null)
+        {
+            yield return definition.FullName;
+        }
+
+        var tickIndex = definition.Name.IndexOf('`', StringComparison.Ordinal);
+        if (tickIndex < 0)
+        {
+            yield break;
+        }
+
+        var name = definition.Name[..tickIndex];
+        var arity = definition.GetGenericArguments().Length;
+        yield return $"{name}-{arity}";
+    }
 }

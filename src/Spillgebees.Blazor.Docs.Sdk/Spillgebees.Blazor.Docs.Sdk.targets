@@ -352,9 +352,11 @@ EmbeddedSources = results.ToArray();
     DependsOnTargets="ResolveProjectReferences"
   >
     <PropertyGroup>
+      <DocsSdk_ToolTfm Condition="'$(DocsSdk_ToolTfm)' == ''">net10.0</DocsSdk_ToolTfm>
       <_DocsSdk_ApiManifestOutputDir>$(BaseIntermediateOutputPath)DocsSdk/manifests</_DocsSdk_ApiManifestOutputDir>
       <_DocsSdk_PackagedApiManifestTool>$(MSBuildThisFileDirectory)tools/api-manifest/Spillgebees.Blazor.Docs.Sdk.ApiManifestTool.dll</_DocsSdk_PackagedApiManifestTool>
-      <_DocsSdk_SourceApiManifestTool>$(MSBuildThisFileDirectory)..\Spillgebees.Blazor.Docs.Sdk.ApiManifestTool\bin\$(Configuration)\net10.0\Spillgebees.Blazor.Docs.Sdk.ApiManifestTool.dll</_DocsSdk_SourceApiManifestTool>
+      <_DocsSdk_SourceApiManifestTool>$(MSBuildThisFileDirectory)../Spillgebees.Blazor.Docs.Sdk.ApiManifestTool/bin/$(Configuration)/$(DocsSdk_ToolTfm)/Spillgebees.Blazor.Docs.Sdk.ApiManifestTool.dll</_DocsSdk_SourceApiManifestTool>
+      <_DocsSdk_SourceApiManifestToolProject>$(MSBuildThisFileDirectory)../Spillgebees.Blazor.Docs.Sdk.ApiManifestTool/Spillgebees.Blazor.Docs.Sdk.ApiManifestTool.csproj</_DocsSdk_SourceApiManifestToolProject>
       <_DocsSdk_ApiManifestTool Condition="Exists('$(_DocsSdk_PackagedApiManifestTool)')"
         >$(_DocsSdk_PackagedApiManifestTool)</_DocsSdk_ApiManifestTool
       >
@@ -371,12 +373,12 @@ EmbeddedSources = results.ToArray();
       />
     </ItemGroup>
 
-    <RemoveDir Directories="$(_DocsSdk_ApiManifestOutputDir)" Condition="'@(_DocsSdk_DocsApiProjectReference)' != ''" />
+    <RemoveDir Directories="$(_DocsSdk_ApiManifestOutputDir)" />
     <MakeDir Directories="$(_DocsSdk_ApiManifestOutputDir)" Condition="'@(_DocsSdk_DocsApiProjectReference)' != ''" />
 
     <Exec
-      Command="dotnet build &quot;$(MSBuildThisFileDirectory)..\Spillgebees.Blazor.Docs.Sdk.ApiManifestTool\Spillgebees.Blazor.Docs.Sdk.ApiManifestTool.csproj&quot; -c &quot;$(Configuration)&quot; -nologo"
-      Condition="'@(_DocsSdk_DocsApiProjectReference)' != '' and '$(_DocsSdk_ApiManifestTool)' == '' and Exists('$(MSBuildThisFileDirectory)..\Spillgebees.Blazor.Docs.Sdk.ApiManifestTool\Spillgebees.Blazor.Docs.Sdk.ApiManifestTool.csproj')"
+      Command="dotnet build &quot;$(_DocsSdk_SourceApiManifestToolProject)&quot; -c &quot;$(Configuration)&quot; -nologo"
+      Condition="'@(_DocsSdk_DocsApiProjectReference)' != '' and '$(_DocsSdk_ApiManifestTool)' == '' and Exists('$(_DocsSdk_SourceApiManifestToolProject)')"
     />
 
     <PropertyGroup Condition="'@(_DocsSdk_DocsApiProjectReference)' != '' and '$(_DocsSdk_ApiManifestTool)' == '' and Exists('$(_DocsSdk_SourceApiManifestTool)')">
@@ -389,11 +391,11 @@ EmbeddedSources = results.ToArray();
     />
 
     <Exec
-      Command="dotnet &quot;$(_DocsSdk_ApiManifestTool)&quot; --project &quot;%(_DocsSdk_DocsApiProjectReference.FullPath)&quot; --output &quot;$(_DocsSdk_ApiManifestOutputDir)&quot; --configuration &quot;$(Configuration)&quot; --target-framework &quot;$(TargetFramework)&quot;"
+      Command="dotnet &quot;$(_DocsSdk_ApiManifestTool)&quot; --project &quot;%(_DocsSdk_DocsApiProjectReference.FullPath)&quot; --output &quot;$(_DocsSdk_ApiManifestOutputDir)&quot; --configuration &quot;$(Configuration)&quot;"
       Condition="'@(_DocsSdk_DocsApiProjectReference)' != ''"
     />
 
-    <ItemGroup>
+    <ItemGroup Condition="'@(_DocsSdk_DocsApiProjectReference)' != ''">
       <_DocsSdk_GeneratedManifests Include="$(_DocsSdk_ApiManifestOutputDir)/*.json" />
       <_DocsSdk_GeneratedManifests>
         <LogicalName>ApiManifest:%(Filename)</LogicalName>

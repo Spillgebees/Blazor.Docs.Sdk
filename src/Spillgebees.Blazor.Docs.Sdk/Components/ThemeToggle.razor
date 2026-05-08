@@ -3,25 +3,45 @@
 @inject IJSRuntime JS
 
 <button class="theme-toggle" @onclick="@Toggle" aria-label="Toggle theme">
-    <span class="theme-toggle-label">theme:@(_isDark ? "dark" : "light")</span>
+    <span class="theme-toggle-label">theme:@ThemeLabel</span>
 </button>
 
 @code {
-    private bool _isDark = true;
+    private bool? _isDark;
+    private string ThemeLabel => _isDark is null ? "..." : _isDark.Value ? "dark" : "light";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            var theme = await JS.InvokeAsync<string>("Spillgebees.DocsSdk.getTheme");
-            _isDark = theme != "light";
+            try
+            {
+                var theme = await JS.InvokeAsync<string>("Spillgebees.DocsSdk.getTheme");
+                _isDark = theme != "light";
+            }
+            catch (JSException)
+            {
+                _isDark = true;
+            }
+            catch (Exception)
+            {
+                _isDark = true;
+            }
+
             StateHasChanged();
         }
     }
 
     private async Task Toggle()
     {
-        _isDark = !_isDark;
-        await JS.InvokeVoidAsync("Spillgebees.DocsSdk.setTheme", _isDark ? "dark" : "light");
+        var newValue = !(_isDark ?? true);
+        try
+        {
+            await JS.InvokeVoidAsync("Spillgebees.DocsSdk.setTheme", newValue ? "dark" : "light");
+            _isDark = newValue;
+            StateHasChanged();
+        }
+        catch (JSException) { }
+        catch (Exception) { }
     }
 }

@@ -318,16 +318,19 @@ internal static partial class Program
         };
     }
 
-    private static ApiParameterInfo CreateParameter(IParameterSymbol symbol, Documentation methodDocs) =>
-        new()
+    private static ApiParameterInfo CreateParameter(IParameterSymbol symbol, Documentation methodDocs)
+    {
+        methodDocs.Parameters.TryGetValue(symbol.Name, out var doc);
+        return new ApiParameterInfo
         {
             Name = symbol.Name,
             Type = symbol.Type.ToDisplayString(TypeDisplayFormat),
-            Summary = methodDocs.Parameters.TryGetValue(symbol.Name, out var doc) ? doc.Text : null,
-            SummaryHtml = methodDocs.Parameters.TryGetValue(symbol.Name, out doc) ? doc.Html : null,
+            Summary = doc?.Text,
+            SummaryHtml = doc?.Html,
             IsOptional = symbol.IsOptional,
             DefaultValue = symbol.HasExplicitDefaultValue ? FormatDefaultValue(symbol.ExplicitDefaultValue) : null,
         };
+    }
 
     private static ApiEventInfo CreateEvent(IEventSymbol symbol, Func<string, string?> resolveCref)
     {
