@@ -1,7 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
-using Spillgebees.Blazor.Docs.Sdk.Components;
+using Spillgebees.Blazor.Docs.Sdk;
 
 namespace Spillgebees.Blazor.Docs.Sdk.Tests.Components;
 

@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.csproj" />
+    <Project Path="src/Spillgebees.Blazor.Docs.Sdk.ApiManifestTool/Spillgebees.Blazor.Docs.Sdk.ApiManifestTool.csproj" />
     <Project Path="src/Spillgebees.Blazor.Docs.Sdk.Assets/Spillgebees.Blazor.Docs.Sdk.Assets.csproj" />
   </Folder>
   <Folder Name="/tests/">

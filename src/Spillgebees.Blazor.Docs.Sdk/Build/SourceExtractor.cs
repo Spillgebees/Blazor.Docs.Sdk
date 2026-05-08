@@ -1,4 +1,4 @@
-namespace Spillgebees.Blazor.Docs.Sdk.Build;
+namespace Spillgebees.Blazor.Docs.Sdk;
 
 using System.Text.RegularExpressions;
 

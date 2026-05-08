@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Spillgebees.Blazor.Docs.Sdk.Components;
+using Spillgebees.Blazor.Docs.Sdk;
 
 namespace Spillgebees.Blazor.Docs.Sdk.Tests.Components;
 
@@ -65,5 +65,18 @@ public class DocFooterTests
         // assert
         var link = cut.Find("a[href='https://github.com/Spillgebees/Blazor.Map']");
         link.Should().NotBeNull();
+    }
+
+    [Test]
+    public void Should_not_render_unsafe_github_href()
+    {
+        // arrange
+        using var ctx = new BunitContext();
+
+        // act
+        var cut = ctx.Render<DocFooter>(parameters => parameters.Add(p => p.GitHubUrl, "javascript:alert(1)"));
+
+        // assert
+        cut.FindAll("a[href='javascript:alert(1)']").Should().BeEmpty();
     }
 }

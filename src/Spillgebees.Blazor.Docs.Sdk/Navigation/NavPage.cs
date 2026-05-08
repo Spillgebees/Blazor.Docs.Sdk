@@ -1,4 +1,4 @@
-namespace Spillgebees.Blazor.Docs.Sdk.Navigation;
+namespace Spillgebees.Blazor.Docs.Sdk;
 
 /// <summary>
 /// Represents a single navigable page in the documentation sidebar.

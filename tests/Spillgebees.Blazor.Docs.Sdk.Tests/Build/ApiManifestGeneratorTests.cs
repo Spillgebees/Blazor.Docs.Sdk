@@ -1,6 +1,6 @@
 using System.Text.Json;
 using AwesomeAssertions;
-using Spillgebees.Blazor.Docs.Sdk.Build;
+using Spillgebees.Blazor.Docs.Sdk;
 
 namespace Spillgebees.Blazor.Docs.Sdk.Tests.Build;
 
@@ -78,6 +78,39 @@ public class ApiManifestGeneratorTests
         var type = manifest.Types.First(t => t.Name == "SamplePublicClass");
         var method = type.Methods.FirstOrDefault(m => m.Name == "DoWork");
         method.Should().NotBeNull();
+    }
+
+    [Test]
+    public void Should_read_xml_doc_summary_for_methods_with_parameters()
+    {
+        // arrange
+        var xmlPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".xml");
+        File.WriteAllText(
+            xmlPath,
+            $$"""
+            <doc>
+              <members>
+                <member name="M:{{typeof(SamplePublicClass).FullName}}.DoWork(System.Int32)">
+                  <summary>Parameterized method docs.</summary>
+                </member>
+              </members>
+            </doc>
+            """
+        );
+
+        try
+        {
+            // act
+            var manifest = ApiManifestGenerator.Generate(typeof(SamplePublicClass).Assembly, xmlPath);
+
+            // assert
+            var type = manifest.Types.First(t => t.Name == "SamplePublicClass");
+            type.Methods.First(m => m.Name == "DoWork").Summary.Should().Be("Parameterized method docs.");
+        }
+        finally
+        {
+            File.Delete(xmlPath);
+        }
     }
 
     [Test]

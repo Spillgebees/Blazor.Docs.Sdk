@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Spillgebees.Blazor.Docs.Sdk.Components;
+using Spillgebees.Blazor.Docs.Sdk;
 
 namespace Spillgebees.Blazor.Docs.Sdk.Tests.Components;
 
@@ -42,5 +42,20 @@ public class OnThisPageTests
         links.Should().HaveCount(2);
         links[0].TextContent.Trim().Should().Be("introduction");
         links[1].TextContent.Trim().Should().Be("usage");
+    }
+
+    [Test]
+    public async Task Should_treat_null_sections_as_empty()
+    {
+        // arrange
+        using var ctx = new BunitContext();
+        ctx.JSInterop.Setup<OnThisPageSection[]>("Spillgebees.DocsSdk.getSections").SetResult(null!);
+
+        // act
+        var cut = ctx.Render<OnThisPage>();
+        await cut.InvokeAsync(() => cut.Instance.GetType());
+
+        // assert
+        cut.FindAll(".doc-on-this-page").Should().BeEmpty();
     }
 }

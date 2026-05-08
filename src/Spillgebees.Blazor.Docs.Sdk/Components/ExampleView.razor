@@ -1,3 +1,4 @@
+@namespace Spillgebees.Blazor.Docs.Sdk
 @using Microsoft.AspNetCore.Components
 @typeparam TComponent where TComponent : IComponent
 
@@ -57,6 +58,11 @@
 
         foreach (var (assembly, resourceName) in matches)
         {
+            if (resourceName.Length <= resourcePrefix.Length || resourceName[resourcePrefix.Length] != ':')
+            {
+                continue;
+            }
+
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream is null)
             {

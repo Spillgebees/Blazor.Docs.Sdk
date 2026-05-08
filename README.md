@@ -10,8 +10,9 @@ A Razor Class Library NuGet package for building and deploying documentation sit
 - Shell layout with collapsible sidebar, top bar, and footer
 - Dark/light theme toggle with `localStorage` persistence
 - Live component rendering alongside syntax-highlighted source code via `ExampleView`
-- Auto-generated API reference pages from XML doc comments and reflection
+- Auto-generated API reference pages from Roslyn API manifests, decorated with XML doc comments
 - Build-time source extraction and API manifest generation via MSBuild targets (runs automatically for direct package consumers)
+- Sticky on-page navigation and sidebar links that wrap long component/type names
 - Self-hosted Inter Variable and JetBrains Mono fonts
 - Reusable GitHub Actions workflow for deploying to GitHub Pages
 
@@ -27,7 +28,7 @@ This package is published to [nuget.org](https://www.nuget.org/packages/Spillgeb
 <PackageReference Include="Spillgebees.Blazor.Docs.Sdk" />
 ```
 
-### 2. Add a ProjectReference to your library
+### 2. Add ProjectReference items
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
@@ -37,11 +38,13 @@ This package is published to [nuget.org](https://www.nuget.org/packages/Spillgeb
 
   <ItemGroup>
     <PackageReference Include="Spillgebees.Blazor.Docs.Sdk" />
-    <ProjectReference Include="../YourLibrary/YourLibrary.csproj" />
+    <ProjectReference Include="../YourLibrary/YourLibrary.csproj" DocsApi="true" />
     <ProjectReference Include="../YourLibrary.Samples.Shared/YourLibrary.Samples.Shared.csproj" />
   </ItemGroup>
 </Project>
 ```
+
+Use `DocsApi="true"` only on the library whose public API should appear in the API reference. Other project references, such as shared samples, remain normal references and are not scanned for API manifests.
 
 ### 3. Create `MainLayout.razor` with `DocSite`
 
@@ -103,11 +106,13 @@ When your docs project directly references the SDK package, MSBuild targets run 
 
 **Source extraction** scans your Razor files for `ExampleView<TComponent>` references, locates the matching `.razor` and `.razor.cs` source files in referenced projects, and embeds them as assembly resources. `ExampleView` reads these at runtime to display syntax-highlighted source alongside live components.
 
-**API manifest generation** reflects over referenced Spillgebees library assemblies and their XML documentation files to produce a JSON manifest. `ApiDoc` and `ApiReferenceNav.Generate<T>()` use this manifest to render API reference pages with parameters, methods, events, and descriptions.
+**API manifest generation** runs a Roslyn build-time tool for `ProjectReference` items that opt in with `DocsApi="true"`. The generated manifest is based on public CLR symbols, so internal documented types are excluded and property, method, generic, nullable, enum, and Blazor parameter signatures are populated accurately. XML documentation is used only to decorate the Roslyn symbols with summaries, remarks, and parameter descriptions.
+
+API navigation uses friendly route slugs such as `api/MyComponent` or `api/TrackedEntityLayer-1` for generic types. Legacy full-name route values still resolve when routed pages use the SDK resolver.
 
 At runtime, `ExampleView`, `ApiDoc`, and `ApiReferenceNav.Generate<T>()` search for embedded resources across all loaded assemblies — the library assembly is checked first, then the docs project assembly and others. This means the resources work regardless of which assembly they end up in.
 
-No configuration needed. The targets only run in projects that directly reference the SDK (packed into `build/`, not `buildTransitive/`), so transitive consumers are unaffected.
+The targets only run in projects that directly reference the SDK (packed into `build/`, not `buildTransitive/`), so transitive consumers are unaffected. Generated API manifest files are written under the docs project `obj/DocsSdk/manifests/` and embedded into the docs app only; they are not added to the documented library package.
 
 ## Running the Demo
 

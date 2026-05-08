@@ -1,6 +1,6 @@
 @* src/Spillgebees.Blazor.Docs.Sdk/Components/DocSidebar.razor *@
+@namespace Spillgebees.Blazor.Docs.Sdk
 @using Microsoft.AspNetCore.Components.Routing
-@using Spillgebees.Blazor.Docs.Sdk.Navigation
 @inject NavigationManager NavigationManager
 
 <nav class="doc-sidebar">
@@ -15,6 +15,7 @@
                 {
                     <li>
                         <a href="@navPage.Href"
+                           title="@navPage.Title"
                            class="doc-sidebar-link @(IsActive(navPage.Href) ? "active" : "")">
                             @navPage.Title
                         </a>

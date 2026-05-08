@@ -1,4 +1,4 @@
-namespace Spillgebees.Blazor.Docs.Sdk.Build;
+namespace Spillgebees.Blazor.Docs.Sdk;
 
 using System.Reflection;
 using System.Xml.Linq;
@@ -83,7 +83,7 @@ public static class ApiManifestGenerator
                     {
                         Name = m.Name,
                         ReturnType = FormatTypeName(m.ReturnType),
-                        Summary = GetDoc(xmlDocs, $"M:{type.FullName}.{m.Name}"),
+                        Summary = GetDoc(xmlDocs, GetMethodXmlDocKey(type, m)),
                         Parameters = m.GetParameters()
                             .Select(p => new ApiParameterInfo
                             {
@@ -133,6 +133,53 @@ public static class ApiManifestGenerator
 
     private static string? GetDoc(Dictionary<string, string> docs, string key) =>
         docs.TryGetValue(key, out var value) ? value : null;
+
+    private static string GetMethodXmlDocKey(Type declaringType, MethodInfo method)
+    {
+        var key = $"M:{declaringType.FullName}.{method.Name}";
+        var parameters = method.GetParameters();
+        return parameters.Length == 0
+            ? key
+            : key + "(" + string.Join(",", parameters.Select(p => FormatXmlDocTypeName(p.ParameterType))) + ")";
+    }
+
+    private static string FormatXmlDocTypeName(Type type)
+    {
+        if (type.IsByRef)
+        {
+            return FormatXmlDocTypeName(type.GetElementType()!) + "@";
+        }
+
+        if (type.IsPointer)
+        {
+            return FormatXmlDocTypeName(type.GetElementType()!) + "*";
+        }
+
+        if (type.IsArray)
+        {
+            return FormatXmlDocTypeName(type.GetElementType()!) + "[" + new string(',', type.GetArrayRank() - 1) + "]";
+        }
+
+        if (type.IsGenericParameter)
+        {
+            return type.DeclaringMethod is not null
+                ? "``" + type.GenericParameterPosition
+                : "`" + type.GenericParameterPosition;
+        }
+
+        if (type.IsGenericType)
+        {
+            var definitionName = (
+                type.GetGenericTypeDefinition().FullName ?? type.GetGenericTypeDefinition().Name
+            ).Replace('+', '.');
+            return definitionName
+                + "{"
+                + string.Join(",", type.GetGenericArguments().Select(FormatXmlDocTypeName))
+                + "}";
+        }
+
+        return (type.FullName ?? type.Name).Replace('+', '.');
+    }
 
     private static string FormatTypeName(Type type)
     {

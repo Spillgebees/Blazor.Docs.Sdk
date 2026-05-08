@@ -1,3 +1,4 @@
+@namespace Spillgebees.Blazor.Docs.Sdk
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
 
@@ -33,7 +34,7 @@
         {
             var sections = await JS.InvokeAsync<OnThisPageSection[]>(
                 "Spillgebees.DocsSdk.getSections"
-            );
+            ) ?? [];
 
             if (sections.Length > 0)
             {
