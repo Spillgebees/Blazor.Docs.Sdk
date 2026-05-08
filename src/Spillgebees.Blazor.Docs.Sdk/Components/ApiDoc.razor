@@ -1,6 +1,8 @@
+@namespace Spillgebees.Blazor.Docs.Sdk
 @using Microsoft.AspNetCore.Components
 @using Microsoft.JSInterop
 @using System.Linq
+@using System.Text.RegularExpressions
 @inject IJSRuntime JS
 
 @if (TypeInfo is not null)
@@ -16,7 +18,11 @@
 
         @if (!string.IsNullOrEmpty(TypeInfo.Summary))
         {
-            <p class="api-doc-summary">@TypeInfo.Summary</p>
+            <div class="api-doc-summary api-doc-rich-text">@RenderDocumentation(TypeInfo.Summary, TypeInfo.SummaryHtml)</div>
+        }
+        @if (!string.IsNullOrEmpty(TypeInfo.Remarks))
+        {
+            <div class="api-doc-summary api-doc-rich-text">@RenderDocumentation(TypeInfo.Remarks, TypeInfo.RemarksHtml)</div>
         }
 
         @if (!string.IsNullOrEmpty(TypeInfo.BaseType) || TypeInfo.Interfaces.Count > 0)
@@ -26,7 +32,7 @@
                 @if (!string.IsNullOrEmpty(TypeInfo.BaseType))
                 {
                     <div class="api-doc-base-type">
-                        <span>Base type: </span><code>@TypeInfo.BaseType</code>
+                        <span>Base type: </span><code title="@TypeInfo.BaseType">@ShortenTypeName(TypeInfo.BaseType)</code>
                     </div>
                 }
                 @if (TypeInfo.Interfaces.Count > 0)
@@ -35,7 +41,7 @@
                         <span>Implements: </span>
                         @foreach (var iface in TypeInfo.Interfaces)
                         {
-                            <code>@iface</code>
+                            <code title="@iface">@ShortenTypeName(iface)</code>
                         }
                     </div>
                 }
@@ -56,7 +62,7 @@
                                 <span> where </span>
                                 @foreach (var constraint in param.Constraints)
                                 {
-                                    <code>@constraint</code>
+                                    <code title="@constraint">@ShortenTypeName(constraint)</code>
                                 }
                             }
                         </li>
@@ -69,7 +75,7 @@
         {
             <section class="api-doc-section">
                 <button class="api-doc-section-toggle" @onclick="@(() => ToggleSection("properties"))">
-                    // parameters <span class="api-doc-section-indicator">@(IsSectionOpen("properties") ? "−" : "+")</span>
+                    // properties <span class="api-doc-section-indicator">@(IsSectionOpen("properties") ? "−" : "+")</span>
                 </button>
                 @if (IsSectionOpen("properties"))
                 {
@@ -79,10 +85,14 @@
                             <div class="api-doc-definition">
                                 <div class="api-doc-definition-name">@prop.Name</div>
                                 <div class="api-doc-definition-meta">
-                                    <span class="api-doc-definition-type">@prop.Type</span>
+                                    <span class="api-doc-definition-type" title="@prop.Type">@ShortenTypeName(prop.Type)</span>
                                     @if (prop.IsParameter)
                                     {
-                                        <span class="api-doc-badge-required">required</span>
+                                        <span class="api-doc-badge-required">blazor parameter</span>
+                                    }
+                                    @if (prop.IsCascadingParameter)
+                                    {
+                                        <span class="api-doc-badge-required">cascading parameter</span>
                                     }
                                     @if (prop.DefaultValue is not null)
                                     {
@@ -91,7 +101,7 @@
                                 </div>
                                 @if (!string.IsNullOrEmpty(prop.Summary))
                                 {
-                                    <p class="api-doc-definition-desc">@prop.Summary</p>
+                                    <div class="api-doc-definition-desc api-doc-rich-text">@RenderDocumentation(prop.Summary, prop.SummaryHtml)</div>
                                 }
                             </div>
                         }
@@ -111,14 +121,28 @@
                     <div class="api-doc-definitions">
                         @foreach (var method in TypeInfo.Methods)
                         {
-                            var sig = $"{method.ReturnType} {method.Name}({string.Join(", ", method.Parameters.Select(p => $"{p.Type} {p.Name}"))})";
+                            var genericParameters = method.GenericParameters.Count == 0
+                                ? ""
+                                : $"<{string.Join(", ", method.GenericParameters.Select(p => p.Name))}>";
+                            var parameterList = string.Join(", ", method.Parameters.Select(p => FormatParameter(p, shortenTypes: true)));
+                            var constraints = method.GenericParameters.Count == 0
+                                ? ""
+                                : " " + string.Join(" ", method.GenericParameters
+                                    .Where(p => p.Constraints.Count > 0)
+                                    .Select(p => $"where {p.Name} : {string.Join(", ", p.Constraints.Select(ShortenTypeName))}"));
+                            var sig = $"{ShortenTypeName(method.ReturnType)} {method.Name}{genericParameters}({parameterList}){constraints}";
+                            var fullSig = $"{method.ReturnType} {method.Name}{genericParameters}({string.Join(", ", method.Parameters.Select(p => FormatParameter(p, shortenTypes: false)))})";
                             <div class="api-doc-definition api-doc-method-def">
                                 <div class="api-doc-method-signature">
-                                    <pre><code class="language-csharp">@sig</code></pre>
+                                    <pre title="@fullSig"><code class="language-csharp">@sig</code></pre>
                                 </div>
                                 @if (!string.IsNullOrEmpty(method.Summary))
                                 {
-                                    <p class="api-doc-definition-desc">@method.Summary</p>
+                                    <div class="api-doc-definition-desc api-doc-rich-text">@RenderDocumentation(method.Summary, method.SummaryHtml)</div>
+                                }
+                                @foreach (var parameter in method.Parameters.Where(p => !string.IsNullOrEmpty(p.Summary)))
+                                {
+                                    <div class="api-doc-definition-desc api-doc-rich-text"><code>@parameter.Name</code> @RenderDocumentation(parameter.Summary, parameter.SummaryHtml)</div>
                                 }
                             </div>
                         }
@@ -141,11 +165,11 @@
                             <div class="api-doc-definition">
                                 <div class="api-doc-definition-name">@evt.Name</div>
                                 <div class="api-doc-definition-meta">
-                                    <span class="api-doc-definition-type">@evt.Type</span>
+                                    <span class="api-doc-definition-type" title="@evt.Type">@ShortenTypeName(evt.Type)</span>
                                 </div>
                                 @if (!string.IsNullOrEmpty(evt.Summary))
                                 {
-                                    <p class="api-doc-definition-desc">@evt.Summary</p>
+                                    <div class="api-doc-definition-desc api-doc-rich-text">@RenderDocumentation(evt.Summary, evt.SummaryHtml)</div>
                                 }
                             </div>
                         }
@@ -172,7 +196,7 @@
                             <tr>
                                 <td>@enumVal.Name</td>
                                 <td>@enumVal.Value</td>
-                                <td>@enumVal.Summary</td>
+                                <td class="api-doc-rich-text">@RenderDocumentation(enumVal.Summary, enumVal.SummaryHtml)</td>
                             </tr>
                         }
                     </tbody>
@@ -190,6 +214,9 @@
     public Type? Type { get; set; }
 
     private readonly HashSet<string> _collapsedSections = [];
+    private static readonly Regex _fullyQualifiedTypeNameRegex = new(
+        @"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+",
+        RegexOptions.Compiled);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -204,7 +231,7 @@
         if (assemblyName is null) return;
 
         var manifest = EmbeddedResourceLocator.LoadApiManifest(assemblyName, Type.Assembly);
-        TypeInfo = manifest?.Types.FirstOrDefault(t => t.FullName == (Type.FullName ?? Type.Name));
+        TypeInfo = manifest is null ? null : ApiReferenceNav.FindType(manifest, Type.FullName ?? Type.Name);
     }
 
     private void ToggleSection(string sectionName)
@@ -216,4 +243,34 @@
     }
 
     private bool IsSectionOpen(string sectionName) => !_collapsedSections.Contains(sectionName);
+
+    private static string FormatParameter(ApiParameterInfo parameter, bool shortenTypes)
+    {
+        var parameterType = shortenTypes ? ShortenTypeName(parameter.Type) : parameter.Type;
+        var signature = $"{parameterType} {parameter.Name}";
+        if (parameter.DefaultValue is not null)
+        {
+            signature += " = " + parameter.DefaultValue;
+        }
+
+        return signature;
+    }
+
+    private static string ShortenTypeName(string? typeName)
+    {
+        if (string.IsNullOrWhiteSpace(typeName))
+        {
+            return string.Empty;
+        }
+
+        return _fullyQualifiedTypeNameRegex.Replace(typeName, match =>
+        {
+            var value = match.Value;
+            var lastDotIndex = value.LastIndexOf('.');
+            return lastDotIndex < 0 ? value : value[(lastDotIndex + 1)..];
+        });
+    }
+
+    private static MarkupString RenderDocumentation(string? text, string? html) =>
+        new(html ?? System.Net.WebUtility.HtmlEncode(text ?? string.Empty));
 }

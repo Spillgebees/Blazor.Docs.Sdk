@@ -1,4 +1,4 @@
-namespace Spillgebees.Blazor.Docs.Sdk.Components;
+namespace Spillgebees.Blazor.Docs.Sdk;
 
 /// <summary>
 /// Represents a section anchor for the OnThisPage component.

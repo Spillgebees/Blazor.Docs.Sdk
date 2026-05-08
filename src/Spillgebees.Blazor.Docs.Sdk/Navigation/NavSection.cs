@@ -1,4 +1,4 @@
-namespace Spillgebees.Blazor.Docs.Sdk.Navigation;
+namespace Spillgebees.Blazor.Docs.Sdk;
 
 /// <summary>
 /// Represents a section in the documentation sidebar, grouping related pages under a common title.

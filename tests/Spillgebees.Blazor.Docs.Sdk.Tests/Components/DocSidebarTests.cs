@@ -1,8 +1,7 @@
 using AwesomeAssertions;
 using Bunit.TestDoubles;
 using Microsoft.Extensions.DependencyInjection;
-using Spillgebees.Blazor.Docs.Sdk.Components;
-using Spillgebees.Blazor.Docs.Sdk.Navigation;
+using Spillgebees.Blazor.Docs.Sdk;
 
 namespace Spillgebees.Blazor.Docs.Sdk.Tests.Components;
 
@@ -90,5 +89,22 @@ public class DocSidebarTests
         footerDiv.Should().NotBeNull();
         var footer = cut.Find("footer");
         footer.Should().NotBeNull();
+    }
+
+    [Test]
+    public void Should_render_title_attribute_for_long_page_names()
+    {
+        // arrange
+        using var ctx = new BunitContext();
+        var longName = "TrackedEntityLayer<TItemWithAVeryLongName>";
+        var navigation = new[] { new NavSection("API Reference", [new NavPage(longName, "api/TrackedEntityLayer-1")]) };
+
+        // act
+        var cut = ctx.Render<DocSidebar>(parameters =>
+            parameters.Add(p => p.Navigation, navigation).Add(p => p.GitHubUrl, "https://example.com")
+        );
+
+        // assert
+        cut.Find(".doc-sidebar-link").GetAttribute("title").Should().Be(longName);
     }
 }

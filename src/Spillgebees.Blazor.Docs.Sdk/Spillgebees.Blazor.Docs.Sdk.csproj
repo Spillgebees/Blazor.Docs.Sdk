@@ -10,6 +10,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>spillgebees.png</PackageIcon>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>Spillgebees.Blazor.Docs.Sdk</RootNamespace>
     <RepositoryUrl>https://github.com/Spillgebees/Blazor.Docs.Sdk</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Spillgebees/Blazor.Docs.Sdk</PackageProjectUrl>
@@ -30,6 +31,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference
+      Include="..\Spillgebees.Blazor.Docs.Sdk.ApiManifestTool\Spillgebees.Blazor.Docs.Sdk.ApiManifestTool.csproj"
+      ReferenceOutputAssembly="false"
+      Private="false"
+    />
     <ProjectReference
       Include="..\Spillgebees.Blazor.Docs.Sdk.Assets\Spillgebees.Blazor.Docs.Sdk.Assets.csproj"
       ReferenceOutputAssembly="false"
@@ -53,6 +59,17 @@
       />
       <_ContentIncludedByDefault Remove="wwwroot\**" />
       <_ContentIncludedByDefault Include="wwwroot\**" Condition="Exists('$(MSBuildProjectDirectory)\wwwroot')" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="IncludeApiManifestToolInPackage" BeforeTargets="_GetPackageFiles">
+    <ItemGroup>
+      <None
+        Include="..\Spillgebees.Blazor.Docs.Sdk.ApiManifestTool\bin\$(Configuration)\net10.0\**\*"
+        Pack="true"
+        PackagePath="build/tools/api-manifest/%(RecursiveDir)"
+        Visible="false"
+      />
     </ItemGroup>
   </Target>
 </Project>

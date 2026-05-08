@@ -14,7 +14,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.csproj" />
+    <ProjectReference
+      Include="../../src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.csproj"
+      DocsApi="true"
+    />
   </ItemGroup>
 
   <!-- Import targets explicitly for ProjectReference (auto-imported for PackageReference) -->

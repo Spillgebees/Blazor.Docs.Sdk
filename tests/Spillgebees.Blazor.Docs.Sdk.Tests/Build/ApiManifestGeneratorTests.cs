@@ -1,6 +1,6 @@
 using System.Text.Json;
 using AwesomeAssertions;
-using Spillgebees.Blazor.Docs.Sdk.Build;
+using Spillgebees.Blazor.Docs.Sdk;
 
 namespace Spillgebees.Blazor.Docs.Sdk.Tests.Build;
 

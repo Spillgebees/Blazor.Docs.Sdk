@@ -1,4 +1,4 @@
-namespace Spillgebees.Blazor.Docs.Sdk.Build;
+namespace Spillgebees.Blazor.Docs.Sdk;
 
 using System.Text.Json.Serialization;
 
@@ -21,6 +21,14 @@ public sealed class ApiManifest
 /// </summary>
 public sealed class ApiTypeInfo
 {
+    /// <summary>Gets or sets the stable compiler metadata identity for the type.</summary>
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = "";
+
+    /// <summary>Gets or sets the friendly route slug for the type.</summary>
+    [JsonPropertyName("slug")]
+    public string Slug { get; set; } = "";
+
     /// <summary>Gets or sets the simple name of the type.</summary>
     [JsonPropertyName("name")]
     public string Name { get; set; } = "";
@@ -40,6 +48,18 @@ public sealed class ApiTypeInfo
     /// <summary>Gets or sets the XML doc summary for the type, if present.</summary>
     [JsonPropertyName("summary")]
     public string? Summary { get; set; }
+
+    /// <summary>Gets or sets the rendered XML doc summary HTML for the type, if present.</summary>
+    [JsonPropertyName("summaryHtml")]
+    public string? SummaryHtml { get; set; }
+
+    /// <summary>Gets or sets the XML doc remarks for the type, if present.</summary>
+    [JsonPropertyName("remarks")]
+    public string? Remarks { get; set; }
+
+    /// <summary>Gets or sets the rendered XML doc remarks HTML for the type, if present.</summary>
+    [JsonPropertyName("remarksHtml")]
+    public string? RemarksHtml { get; set; }
 
     /// <summary>Gets or sets the fully qualified name of the base type, if any.</summary>
     [JsonPropertyName("baseType")]
@@ -101,9 +121,17 @@ public sealed class ApiPropertyInfo
     [JsonPropertyName("summary")]
     public string? Summary { get; set; }
 
+    /// <summary>Gets or sets the rendered XML doc summary HTML for the property, if present.</summary>
+    [JsonPropertyName("summaryHtml")]
+    public string? SummaryHtml { get; set; }
+
     /// <summary>Gets or sets a value indicating whether this property is a Blazor component parameter.</summary>
     [JsonPropertyName("isParameter")]
     public bool IsParameter { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether this property is a cascading Blazor parameter.</summary>
+    [JsonPropertyName("isCascadingParameter")]
+    public bool IsCascadingParameter { get; set; }
 
     /// <summary>Gets or sets the default value expression for the property, if known.</summary>
     [JsonPropertyName("defaultValue")]
@@ -127,6 +155,14 @@ public sealed class ApiMethodInfo
     [JsonPropertyName("summary")]
     public string? Summary { get; set; }
 
+    /// <summary>Gets or sets the rendered XML doc summary HTML for the method, if present.</summary>
+    [JsonPropertyName("summaryHtml")]
+    public string? SummaryHtml { get; set; }
+
+    /// <summary>Gets or sets the generic type parameters declared on the method.</summary>
+    [JsonPropertyName("genericParameters")]
+    public List<ApiGenericParameter> GenericParameters { get; set; } = [];
+
     /// <summary>Gets or sets the list of parameters accepted by the method.</summary>
     [JsonPropertyName("parameters")]
     public List<ApiParameterInfo> Parameters { get; set; } = [];
@@ -144,6 +180,22 @@ public sealed class ApiParameterInfo
     /// <summary>Gets or sets the fully qualified type name of the parameter.</summary>
     [JsonPropertyName("type")]
     public string Type { get; set; } = "";
+
+    /// <summary>Gets or sets the XML doc summary for the parameter, if present.</summary>
+    [JsonPropertyName("summary")]
+    public string? Summary { get; set; }
+
+    /// <summary>Gets or sets the rendered XML doc summary HTML for the parameter, if present.</summary>
+    [JsonPropertyName("summaryHtml")]
+    public string? SummaryHtml { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether the parameter is optional.</summary>
+    [JsonPropertyName("isOptional")]
+    public bool IsOptional { get; set; }
+
+    /// <summary>Gets or sets the default value expression for the parameter, if known.</summary>
+    [JsonPropertyName("defaultValue")]
+    public string? DefaultValue { get; set; }
 }
 
 /// <summary>
@@ -162,6 +214,10 @@ public sealed class ApiEventInfo
     /// <summary>Gets or sets the XML doc summary for the event, if present.</summary>
     [JsonPropertyName("summary")]
     public string? Summary { get; set; }
+
+    /// <summary>Gets or sets the rendered XML doc summary HTML for the event, if present.</summary>
+    [JsonPropertyName("summaryHtml")]
+    public string? SummaryHtml { get; set; }
 }
 
 /// <summary>
@@ -180,4 +236,8 @@ public sealed class ApiEnumValue
     /// <summary>Gets or sets the XML doc summary for the enum member, if present.</summary>
     [JsonPropertyName("summary")]
     public string? Summary { get; set; }
+
+    /// <summary>Gets or sets the rendered XML doc summary HTML for the enum value, if present.</summary>
+    [JsonPropertyName("summaryHtml")]
+    public string? SummaryHtml { get; set; }
 }

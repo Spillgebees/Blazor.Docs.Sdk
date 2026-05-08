@@ -8,8 +8,6 @@
 </DocSite>
 
 @code {
-    // Manual nav entries because this demo documents the SDK itself.
-    // Consuming repos use ApiReferenceNav.Generate<T>() with auto-generated manifests.
     private static readonly NavSection[] Navigation =
     [
         new("Getting Started", [
@@ -23,15 +21,6 @@
             new NavPage("ApiDoc", "components/api-doc"),
             new NavPage("ThemeToggle", "components/theme-toggle"),
         ]),
-        new("API Reference", [
-            new NavPage("DocSite", "api/Spillgebees.Blazor.Docs.Sdk.Components.DocSite"),
-            new NavPage("ExampleView", "api/Spillgebees.Blazor.Docs.Sdk.Components.ExampleView"),
-            new NavPage("CodeBlock", "api/Spillgebees.Blazor.Docs.Sdk.Components.CodeBlock"),
-            new NavPage("ApiDoc", "api/Spillgebees.Blazor.Docs.Sdk.Components.ApiDoc"),
-            new NavPage("ThemeToggle", "api/Spillgebees.Blazor.Docs.Sdk.Components.ThemeToggle"),
-            new NavPage("Breadcrumb", "api/Spillgebees.Blazor.Docs.Sdk.Components.Breadcrumb"),
-            new NavPage("NavPage", "api/Spillgebees.Blazor.Docs.Sdk.Navigation.NavPage"),
-            new NavPage("NavSection", "api/Spillgebees.Blazor.Docs.Sdk.Navigation.NavSection"),
-        ]),
+        new("API Reference", ApiReferenceNav.Generate<DocSite>()),
     ];
 }
