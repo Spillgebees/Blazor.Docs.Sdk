@@ -2,14 +2,14 @@ import { resolve } from "node:path";
 import { copyFileSync, mkdirSync, readdirSync } from "node:fs";
 import { defineConfig, type UserConfig, type Plugin } from "vite";
 
-const outDir = resolve(import.meta.dirname!, "../Spillgebees.Blazor.Docs.Sdk/wwwroot");
+const outDir = resolve(import.meta.dirname, "../Spillgebees.Blazor.Docs.Sdk/wwwroot");
 
 /** Copies font files from src/fonts/ into the wwwroot/fonts/ output directory. */
 function copyFontsPlugin(): Plugin {
   return {
     name: "copy-fonts",
     writeBundle() {
-      const fontsIn = resolve(import.meta.dirname!, "src/fonts");
+      const fontsIn = resolve(import.meta.dirname, "src/fonts");
       const fontsOut = resolve(outDir, "fonts");
       mkdirSync(fontsOut, { recursive: true });
       for (const file of readdirSync(fontsIn)) {
@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
   return {
     build: {
       lib: {
-        entry: resolve(import.meta.dirname!, "src/index.ts"),
+        entry: resolve(import.meta.dirname, "src/index.ts"),
         formats: ["es"],
         fileName: () => "Spillgebees.Blazor.Docs.Sdk.lib.module.js",
       },

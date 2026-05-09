@@ -6,6 +6,7 @@ using Spillgebees.Blazor.Docs.Sdk;
 
 namespace Spillgebees.Blazor.Docs.Sdk.Tests.Build;
 
+[NotInParallel("ApiManifestToolBuild")]
 public class ApiManifestToolIntegrationTests
 {
     [Test]
