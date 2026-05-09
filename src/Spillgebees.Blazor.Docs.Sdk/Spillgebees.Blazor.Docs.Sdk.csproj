@@ -14,6 +14,7 @@
     <RepositoryUrl>https://github.com/Spillgebees/Blazor.Docs.Sdk</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/Spillgebees/Blazor.Docs.Sdk</PackageProjectUrl>
+    <BuildProjectReferences Condition="'$(NoBuild)' == 'true'">false</BuildProjectReferences>
   </PropertyGroup>
 
   <ItemGroup>
