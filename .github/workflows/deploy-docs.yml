@@ -33,6 +33,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5
         with:
@@ -43,12 +44,15 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
 
-      - run: dotnet publish ${{ inputs.docs-project-path }} -c Release -o publish
+      - run: dotnet publish "$DOCS_PROJECT_PATH" -c Release -o publish
         env:
           HUSKY: "0"
+          DOCS_PROJECT_PATH: ${{ inputs.docs-project-path }}
 
       - name: Fix base href
-        run: sed -i "s|<base href=\"/\" />|<base href=\"${{ inputs.base-href }}\" />|g" publish/wwwroot/index.html
+        run: sed -i "s|<base href=\"/\" />|<base href=\"$BASE_HREF\" />|g" publish/wwwroot/index.html
+        env:
+          BASE_HREF: ${{ inputs.base-href }}
 
       - name: Add .nojekyll
         run: touch publish/wwwroot/.nojekyll
