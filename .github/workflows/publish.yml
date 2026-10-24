@@ -7,7 +7,7 @@ on:
     types: [published]
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -48,7 +48,42 @@ jobs:
       - name: pack
         run: dotnet pack src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.csproj --configuration Release --no-build --output packages
 
+      - name: upload packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: packages
+          if-no-files-found: error
+          retention-days: 1
+          path: packages/*.nupkg
+
+  # kept apart from the build so only this job, which runs no project code, can
+  # get a nuget.org key
+  publish:
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment: nuget
+    permissions:
+      id-token: write
+
+    steps:
+      - name: download packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: packages
+          path: packages
+
+      - name: setup .NET
+        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5
+
+      # trusted publishing: nuget.org only hands out a key to this workflow
+      # running in the `nuget` environment, which only tags can reach
+      - name: log in to nuget.org
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}
+
       - name: publish to nuget.org
         run: dotnet nuget push "packages/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
