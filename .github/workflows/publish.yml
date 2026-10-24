@@ -49,7 +49,7 @@ jobs:
         run: dotnet pack src/Spillgebees.Blazor.Docs.Sdk/Spillgebees.Blazor.Docs.Sdk.csproj --configuration Release --no-build --output packages
 
       - name: upload packages
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: packages
           if-no-files-found: error
@@ -67,13 +67,13 @@ jobs:
 
     steps:
       - name: download packages
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: packages
           path: packages
 
       - name: setup .NET
-        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
 
       # trusted publishing: nuget.org only hands out a key to this workflow
       # running in the `nuget` environment, which only tags can reach
