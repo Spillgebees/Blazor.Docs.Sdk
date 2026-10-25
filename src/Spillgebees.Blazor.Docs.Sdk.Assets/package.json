@@ -2,7 +2,7 @@
   "name": "spillgebees-blazor-docs-sdk-assets",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.28.7",
+  "packageManager": "pnpm@12.15.0",
   "scripts": {
     "build:dev": "vite build --mode development",
     "build:prod": "vite build --mode production",
@@ -13,10 +13,10 @@
     "highlightjs-cshtml-razor": "^2.1.2"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.7",
+    "@biomejs/biome": "2.6.2",
     "@types/node": "25.9.9",
     "sass": "1.106.1",
-    "typescript": "6.0.3",
-    "vite": "8.1.6"
+    "typescript": "7.0.2",
+    "vite": "8.3.5"
   }
 }
