@@ -358,12 +358,10 @@ EmbeddedSources = results.ToArray();
       <_DocsSdk_SourceApiManifestTool>$(MSBuildThisFileDirectory)../Spillgebees.Blazor.Docs.Sdk.ApiManifestTool/bin/$(Configuration)/$(DocsSdk_ToolTfm)/Spillgebees.Blazor.Docs.Sdk.ApiManifestTool.dll</_DocsSdk_SourceApiManifestTool>
       <_DocsSdk_SourceApiManifestToolProject>$(MSBuildThisFileDirectory)../Spillgebees.Blazor.Docs.Sdk.ApiManifestTool/Spillgebees.Blazor.Docs.Sdk.ApiManifestTool.csproj</_DocsSdk_SourceApiManifestToolProject>
       <_DocsSdk_ApiManifestTool Condition="Exists('$(_DocsSdk_PackagedApiManifestTool)')"
-        >$(_DocsSdk_PackagedApiManifestTool)</_DocsSdk_ApiManifestTool
-      >
+        >$(_DocsSdk_PackagedApiManifestTool)</_DocsSdk_ApiManifestTool>
       <_DocsSdk_ApiManifestTool
         Condition="'$(_DocsSdk_ApiManifestTool)' == '' and Exists('$(_DocsSdk_SourceApiManifestTool)')"
-        >$(_DocsSdk_SourceApiManifestTool)</_DocsSdk_ApiManifestTool
-      >
+        >$(_DocsSdk_SourceApiManifestTool)</_DocsSdk_ApiManifestTool>
     </PropertyGroup>
 
     <ItemGroup>
