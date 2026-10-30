@@ -81,8 +81,8 @@ public class ApiDocTests
         var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, typeInfo));
 
         // assert
-        var definitions = cut.FindAll(".api-doc-definition");
-        definitions.Should().NotBeEmpty();
+        var rows = cut.FindAll(".docs-api-table tbody tr");
+        rows.Should().NotBeEmpty();
         cut.Markup.Should().Contain("Center");
         cut.Markup.Should().Contain("LatLng");
     }
@@ -100,7 +100,7 @@ public class ApiDocTests
         var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, typeInfo));
 
         // assert
-        var typeBadge = cut.Find(".api-doc-definition-type");
+        var typeBadge = cut.Find(".docs-api-type");
         typeBadge.TextContent.Should().Be("IReadOnlyDictionary<string, NavSection>");
         typeBadge
             .GetAttribute("title")
@@ -156,9 +156,9 @@ public class ApiDocTests
         var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, typeInfo));
 
         // assert
-        var badge = cut.Find(".api-doc-badge-required");
+        var badge = cut.Find(".docs-badge-required");
         badge.Should().NotBeNull();
-        badge.TextContent.Should().Contain("blazor parameter");
+        badge.TextContent.Should().Contain("parameter");
     }
 
     [Test]
@@ -172,7 +172,7 @@ public class ApiDocTests
         var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, typeInfo));
 
         // assert
-        cut.Markup.Should().Contain("// properties");
+        cut.Markup.Should().Contain("Properties");
         cut.Markup.Should().NotContain("// parameters");
     }
 
@@ -187,7 +187,7 @@ public class ApiDocTests
         var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, typeInfo));
 
         // assert
-        var toggles = cut.FindAll(".api-doc-section-toggle");
+        var toggles = cut.FindAll(".docs-api-group-head");
         toggles.Should().NotBeEmpty();
     }
 
@@ -198,13 +198,91 @@ public class ApiDocTests
         using var ctx = CreateContext();
         var typeInfo = CreateTestType();
         var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, typeInfo));
-        var definitionsBefore = cut.FindAll(".api-doc-definitions").Count;
+        var group = cut.Find(".docs-api-group");
+        group.GetAttribute("data-docs-open").Should().Be("true");
 
         // act
-        cut.FindAll(".api-doc-section-toggle")[0].Click();
+        cut.FindAll(".docs-api-group-head")[0].Click();
 
         // assert
-        var definitionsAfter = cut.FindAll(".api-doc-definitions").Count;
-        definitionsAfter.Should().Be(definitionsBefore - 1);
+        cut.Find(".docs-api-group").GetAttribute("data-docs-open").Should().Be("false");
+    }
+
+    [Test]
+    public void Should_reset_the_member_filter_when_the_documented_type_changes()
+    {
+        // arrange
+        using var ctx = CreateContext();
+        var first = CreateTestType();
+        first.Id = "T:First";
+        var second = CreateTestType();
+        second.Id = "T:Second";
+        var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, first));
+        cut.Find(".docs-api-filter input").Input("no such member");
+        cut.FindAll(".docs-api-empty").Should().HaveCount(1);
+
+        // act
+        cut.Render(parameters => parameters.Add(p => p.TypeInfo, second));
+
+        // assert
+        cut.FindAll(".docs-api-empty").Should().BeEmpty();
+        cut.Find(".docs-api-filter input").GetAttribute("value").Should().BeEmpty();
+    }
+
+    [Test]
+    public void Should_keep_the_member_filter_when_the_same_type_is_passed_again()
+    {
+        // arrange
+        using var ctx = CreateContext();
+        var type = CreateTestType();
+        type.Id = "T:Same";
+        var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, type));
+        cut.Find(".docs-api-filter input").Input("no such member");
+
+        // act: a parent re-render hands over a fresh object for the same type
+        var copy = CreateTestType();
+        copy.Id = "T:Same";
+        cut.Render(parameters => parameters.Add(p => p.TypeInfo, copy));
+
+        // assert
+        cut.FindAll(".docs-api-empty").Should().HaveCount(1);
+    }
+
+    [Test]
+    public void Should_reset_parameters_only_and_collapsed_groups_when_the_type_changes()
+    {
+        // arrange
+        using var ctx = CreateContext();
+        var first = CreateTestType();
+        first.Id = "T:First";
+        var second = CreateTestType();
+        second.Id = "T:Second";
+        var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, first));
+        cut.Find(".docs-api-switch input").Change(true);
+        cut.FindAll(".docs-api-group-head")[0].Click();
+
+        // act
+        cut.Render(parameters => parameters.Add(p => p.TypeInfo, second));
+
+        // assert
+        cut.Find(".docs-api-switch input").HasAttribute("checked").Should().BeFalse();
+        cut.FindAll(".docs-api-group")
+            .Should()
+            .AllSatisfy(group => group.GetAttribute("data-docs-open").Should().Be("true"));
+    }
+
+    [Test]
+    public void Should_put_member_badges_on_their_own_row_under_the_name()
+    {
+        // arrange
+        using var ctx = CreateContext();
+
+        // act
+        var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, CreateTestType()));
+
+        // assert: a separate row keeps every parameter row the same shape,
+        // however long the member name is
+        var tags = cut.Find(".docs-api-name + .docs-api-tags");
+        tags.QuerySelectorAll(".docs-badge").Select(badge => badge.TextContent).Should().Equal("parameter");
     }
 }
