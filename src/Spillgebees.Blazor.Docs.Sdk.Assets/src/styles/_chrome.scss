@@ -856,3 +856,18 @@
     }
   }
 }
+
+// On a phone in landscape the pinned footer and drawer controls would leave the
+// nav only a few rows, so the whole sidebar scrolls instead.
+@media (max-height: 500px) {
+  .docs-sidebar {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-top: var(--docs-space-4);
+  }
+
+  .docs-sidebar > nav {
+    flex: none;
+    overflow: visible;
+  }
+}

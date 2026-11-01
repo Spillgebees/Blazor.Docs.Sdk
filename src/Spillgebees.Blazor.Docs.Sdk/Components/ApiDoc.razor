@@ -1,4 +1,5 @@
 @namespace Spillgebees.Blazor.Docs.Sdk
+@using System.Net
 @using Microsoft.AspNetCore.Components
 @using Microsoft.JSInterop
 @using System.Linq
@@ -10,7 +11,7 @@
     <article class="docs-api">
         <header>
             <p class="docs-eyebrow">@_info.Namespace</p>
-            <h1 class="docs-title">@_info.Name</h1>
+            <h1 class="docs-title">@((MarkupString)BreakableTypeName(_info.Name))</h1>
 
             <div class="docs-meta-row">
                 <span class="docs-chip"><DocIcon Name="@DocIconName.Cube" />@_info.Kind</span>
@@ -223,6 +224,8 @@
     /// </summary>
     [Parameter]
     public Type? Type { get; set; }
+
+    private static readonly Regex PascalCaseBoundary = new(@"(?<=[a-z0-9])(?=[A-Z])", RegexOptions.Compiled);
 
     private static readonly Regex FullyQualifiedTypeName = new(
         @"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+",
@@ -444,6 +447,10 @@
 
         return signature;
     }
+
+    // lets a long title wrap between words on a narrow screen instead of mid-word
+    private static string BreakableTypeName(string name) =>
+        string.Join("<wbr>", PascalCaseBoundary.Split(name).Select(WebUtility.HtmlEncode));
 
     private static string ShortenTypeName(string? typeName)
     {

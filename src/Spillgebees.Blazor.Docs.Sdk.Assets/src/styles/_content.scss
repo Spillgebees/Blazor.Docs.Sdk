@@ -79,6 +79,8 @@
   font-size: var(--docs-text-4xl);
   line-height: 1.05;
   letter-spacing: var(--docs-tracking-tight);
+  // generated API titles are long PascalCase names with nowhere to break
+  overflow-wrap: anywhere;
   margin: 0 0 var(--docs-space-3);
 }
 

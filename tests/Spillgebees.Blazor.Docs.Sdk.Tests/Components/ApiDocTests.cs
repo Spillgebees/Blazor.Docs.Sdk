@@ -53,7 +53,49 @@ public class ApiDocTests
         var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, typeInfo));
 
         // assert
-        cut.Markup.Should().Contain("SgbMap");
+        cut.Find("h1").TextContent.Should().Be("SgbMap");
+    }
+
+    [Test]
+    public void Should_let_a_long_type_name_wrap_between_words()
+    {
+        // arrange
+        using var ctx = CreateContext();
+        var typeInfo = new ApiTypeInfo
+        {
+            Name = "ApiManifestGenerator",
+            FullName = "Spillgebees.Blazor.Map.Example",
+            Namespace = "Spillgebees.Blazor.Map",
+            Kind = "class",
+        };
+
+        // act
+        var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, typeInfo));
+
+        // assert
+        var title = cut.Find("h1");
+        title.InnerHtml.Should().Be("Api<wbr>Manifest<wbr>Generator");
+        title.TextContent.Should().Be("ApiManifestGenerator");
+    }
+
+    [Test]
+    public void Should_encode_a_generic_type_name_in_the_title()
+    {
+        // arrange
+        using var ctx = CreateContext();
+        var typeInfo = new ApiTypeInfo
+        {
+            Name = "ExampleView<TComponent>",
+            FullName = "Spillgebees.Blazor.Map.Example",
+            Namespace = "Spillgebees.Blazor.Map",
+            Kind = "class",
+        };
+
+        // act
+        var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, typeInfo));
+
+        // assert
+        cut.Find("h1").TextContent.Should().Be("ExampleView<TComponent>");
     }
 
     [Test]
