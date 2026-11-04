@@ -47,17 +47,6 @@ Whether a block shows file tabs or the file picker is decided in JS from the tab
 overflow (`fitCodeTabs`). Don't move it to a container query: containment makes the bar the
 containing block for the picker's `position: fixed` click-away scrim.
 
-### Known limitation: Razor components are missing from the API manifest
-
-`ApiManifestTool` builds the manifest from an `MSBuildWorkspace` compilation, which
-contains only hand-written documents; the Razor source generator does not run there
-(`GetSourceGeneratedDocumentsAsync` returns a single unrelated document). Every
-`.razor` component is therefore absent from the manifest, so `api/DocSite`,
-`api/CodeBlock` and friends do not resolve. Only plain `.cs` types are documented.
-Fixing it means sourcing the type list from the built assembly (see
-`ApiManifestGenerator`, which already reflects over `GetExportedTypes`) while keeping
-Roslyn for XML docs and cref resolution.
-
 ### Theming
 
 Two independent axes, written as attributes on `<html>` by the TypeScript module:

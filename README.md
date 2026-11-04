@@ -142,11 +142,6 @@ was rewritten, so most of the work is in markup and CSS:
 Undefined variables drop the declarations that use them without any error, so check the
 pages in a browser rather than relying on a clean build.
 
-## Known limitations
-
-Razor components (`.razor` files) are not yet included in the generated API manifest, so
-`ApiDoc` and `ApiReferenceNav` only cover types declared in `.cs` files.
-
 ## Theming
 
 Two axes, applied as attributes on `<html>`:
