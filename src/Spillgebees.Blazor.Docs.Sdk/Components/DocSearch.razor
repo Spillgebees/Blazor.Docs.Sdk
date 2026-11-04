@@ -263,6 +263,12 @@
 
     public async ValueTask DisposeAsync()
     {
+        if (_isOpen)
+        {
+            await InvokeSafelyAsync("releaseFocusTrap", "search", false);
+            await InvokeSafelyAsync("setScrollLock", "search", false);
+        }
+
         await InvokeSafelyAsync("unregisterShortcuts");
         _selfRef?.Dispose();
     }

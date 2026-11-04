@@ -110,7 +110,9 @@ Use `DocsApi="true"` only on the library whose public API should appear in the A
 ## Upgrading from 0.8
 
 The C# API is compatible apart from `DocSidebar`, which was removed: the sidebar is now part
-of `DocSite`, so that the drawer, backdrop and scroll lock stay in one place. The stylesheet
+of `DocSite`, so that the drawer, backdrop and scroll lock stay in one place. `NavPage`,
+`NavSection` and `OnThisPageSection` gained optional positional parameters, so code that
+deconstructs them or was compiled against 0.8 needs a rebuild. The stylesheet
 was rewritten, so most of the work is in markup and CSS:
 
 - Remove `<OnThisPage />` from your pages. `DocSite` renders it now, as a rail on wide

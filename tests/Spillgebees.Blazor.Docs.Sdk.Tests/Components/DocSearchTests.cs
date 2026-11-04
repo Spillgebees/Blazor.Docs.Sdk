@@ -96,4 +96,28 @@ public class DocSearchTests
                 && Equals(invocation.Arguments[1], false)
             );
     }
+
+    [Test]
+    public async Task Should_release_its_scroll_lock_and_focus_trap_when_removed_while_open()
+    {
+        // arrange
+        using var ctx = new BunitContext();
+        var cut = await RenderOpenAsync(ctx);
+
+        // act
+        await cut.Instance.DisposeAsync();
+
+        // assert: otherwise the next page keeps the locked scroll
+        ctx.JSInterop.Invocations.Should()
+            .Contain(invocation =>
+                invocation.Identifier == "Spillgebees.DocsSdk.setScrollLock"
+                && Equals(invocation.Arguments[0], "search")
+                && Equals(invocation.Arguments[1], false)
+            );
+        ctx.JSInterop.Invocations.Should()
+            .Contain(invocation =>
+                invocation.Identifier == "Spillgebees.DocsSdk.releaseFocusTrap"
+                && Equals(invocation.Arguments[0], "search")
+            );
+    }
 }

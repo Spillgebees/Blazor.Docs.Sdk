@@ -63,7 +63,8 @@
                 private static readonly NavSection[] Navigation =
                 [
                     new("Getting Started", [new NavPage("Home", "")]),
-                    NavSection.Collapsed("API Reference", ApiReferenceNav.Generate<DocSite>()),
+                    // any type from your library; its ProjectReference needs DocsApi="true"
+                    NavSection.Collapsed("API Reference", ApiReferenceNav.Generate<MyComponent>()),
                 ];
             }
             """,
