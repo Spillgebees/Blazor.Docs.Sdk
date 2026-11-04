@@ -5,7 +5,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager NavigationManager
 
-<div class="docs-modal @(_isOpen ? "docs-open" : "")" @onkeydown="@OnKeyDown" @onkeydown:preventDefault="@_preventDefault">
+<div class="docs-modal @(_isOpen ? "docs-open" : "")" @onkeydown="@OnKeyDown">
     @if (_isOpen)
     {
         <div class="docs-modal-scrim" @onclick="@CloseAsync"></div>
@@ -89,7 +89,6 @@
     public IReadOnlyList<DocSearchEntry> Entries { get; set; } = [];
 
     private bool _isOpen;
-    private bool _preventDefault;
     private string _query = "";
     private int _activeIndex;
     private IReadOnlyList<DocSearchEntry> _results = [];
@@ -186,9 +185,6 @@
 
     private async Task OnKeyDown(KeyboardEventArgs args)
     {
-        // Only swallow the keys we actually handle, so typing still works.
-        _preventDefault = args.Key is "ArrowDown" or "ArrowUp" or "Enter";
-
         switch (args.Key)
         {
             case "ArrowDown":

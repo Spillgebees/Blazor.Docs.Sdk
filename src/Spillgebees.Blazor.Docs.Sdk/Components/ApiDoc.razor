@@ -5,6 +5,7 @@
 @using System.Linq
 @using System.Text.RegularExpressions
 @inject IJSRuntime JS
+@inject NavigationManager NavigationManager
 
 @if (_info is not null)
 {
@@ -115,7 +116,7 @@
                         {
                             <tr>
                                 <td>
-                                    <a class="docs-api-name" id="@MemberId(property.Name)" href="@($"#{MemberId(property.Name)}")">
+                                    <a class="docs-api-name" id="@MemberId(property.Name)" href="@MemberHref(property.Name)">
                                         @property.Name
                                         <DocIcon Name="@DocIconName.Link" />
                                     </a>
@@ -394,6 +395,9 @@
     private bool IsOpen(string key) => !_collapsedGroups.Contains(key);
 
     private static string MemberId(string name) => $"member-{name}";
+
+    // a bare "#id" resolves against <base href>, which is the site root, not this page
+    private string MemberHref(string name) => $"{NavigationManager.Uri.Split('#')[0]}#{MemberId(name)}";
 
     private static string Signature(ApiMethodInfo method)
     {

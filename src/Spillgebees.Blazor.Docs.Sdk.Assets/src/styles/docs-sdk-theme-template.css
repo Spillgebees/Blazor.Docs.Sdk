@@ -51,6 +51,11 @@
   --docs-text-3xl: 1.55rem;
   --docs-text-4xl: clamp(2.1rem, 4.2vw, 2.9rem);
 
+  --docs-leading-tight: 1.2;
+  --docs-leading-body: 1.6;
+  --docs-tracking-tight: -0.02em;
+  --docs-tracking-wide: 0.09em;
+
   /* space scale */
   --docs-space-1: 0.25rem;
   --docs-space-2: 0.4rem;

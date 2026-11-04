@@ -551,8 +551,9 @@ function observeSections(): void {
    * remaining scroll instead, so the final entry is reachable.
    */
   const resolveActive = (): string | undefined => {
-    const scrollBottom = window.scrollY + window.innerHeight;
-    const atEnd = scrollBottom >= document.documentElement.scrollHeight - 2;
+    const { scrollHeight } = document.documentElement;
+    const scrollable = scrollHeight > window.innerHeight + 2;
+    const atEnd = scrollable && window.scrollY + window.innerHeight >= scrollHeight - 2;
 
     if (atEnd) {
       return headings[headings.length - 1]?.id;
@@ -612,6 +613,10 @@ function scrollToElement(id: string): void {
   pinnedSection = { id, until: Date.now() + 900 };
   markActiveSection(id);
 
+  // replaced rather than pushed, so Back leaves the page instead of stepping
+  // through sections; Blazor keeps its own navigation state in history.state
+  history.replaceState(history.state, "", `${location.pathname}${location.search}#${id}`);
+
   target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
 }
 
@@ -645,7 +650,7 @@ function focusableIn(container: HTMLElement): HTMLElement[] {
   );
 }
 
-const traps = new Map<string, () => void>();
+const traps = new Map<string, (restoreFocus: boolean) => void>();
 
 /**
  * Confines Tab focus to `container` until `releaseFocusTrap(owner)`, then hands
@@ -684,9 +689,9 @@ function trapFocus(owner: string, container: HTMLElement | null, outside: HTMLEl
 
   // on the document, so a Tab from an `outside` control is caught too
   document.addEventListener("keydown", onKeyDown);
-  traps.set(owner, () => {
+  traps.set(owner, (restoreFocus) => {
     document.removeEventListener("keydown", onKeyDown);
-    if (opener?.isConnected && opener.offsetParent !== null) {
+    if (restoreFocus && opener?.isConnected && opener.offsetParent !== null) {
       opener.focus();
     }
   });
@@ -695,9 +700,7 @@ function trapFocus(owner: string, container: HTMLElement | null, outside: HTMLEl
 function releaseFocusTrap(owner: string, restoreFocus = true): void {
   const release = traps.get(owner);
   traps.delete(owner);
-  if (release && restoreFocus) {
-    release();
-  }
+  release?.(restoreFocus);
 }
 
 function focusElement(element: HTMLElement | null): void {
@@ -880,8 +883,9 @@ interface ShortcutHost {
 let shortcutHandler: ((event: KeyboardEvent) => void) | null = null;
 
 /**
- * Registers the ⌘K / Ctrl+K / "/" shortcut. The DotNet object reference is
- * owned by DocSearch, which unregisters on dispose.
+ * Registers the ⌘K / Ctrl+K / "/" shortcut, and cancels the browser's default
+ * for the keys the open palette handles. The DotNet object reference is owned
+ * by DocSearch, which unregisters on dispose.
  */
 function registerShortcuts(host: ShortcutHost): void {
   unregisterShortcuts();
@@ -891,8 +895,23 @@ function registerShortcuts(host: ShortcutHost): void {
     const typing =
       !!target && (/^(input|textarea|select)$/i.test(target.tagName) || target.isContentEditable);
 
-    const isPaletteKey = event.key === "k" && (event.metaKey || event.ctrlKey);
+    // lower-cased for Caps Lock; Shift is left alone, since Ctrl+Shift+K is
+    // Firefox's web console
+    const isPaletteKey =
+      event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey) && !event.shiftKey;
     const isSlash = event.key === "/" && !typing;
+
+    // Keys the palette handles must be cancelled while the event is still being
+    // dispatched. Blazor's @onkeydown:preventDefault applies the value from the
+    // last render, which on Blazor Server is one key behind.
+    if (
+      target?.closest(".docs-modal") &&
+      !event.isComposing &&
+      (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Enter")
+    ) {
+      event.preventDefault();
+      return;
+    }
 
     if (isPaletteKey || isSlash) {
       event.preventDefault();

@@ -241,7 +241,8 @@ public class DocSiteTests
         );
 
         // assert
-        cut.FindAll(".docs-github-link").Should().BeEmpty();
+        cut.FindAll(".docs-footer-mark").Should().BeEmpty();
+        cut.FindAll("a[href^='javascript:']").Should().BeEmpty();
     }
 
     [Test]

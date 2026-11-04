@@ -58,6 +58,14 @@
                      Theme="@DocsTheme.Refined">
                 @Body
             </DocSite>
+
+            @code {
+                private static readonly NavSection[] Navigation =
+                [
+                    new("Getting Started", [new NavPage("Home", "")]),
+                    NavSection.Collapsed("API Reference", ApiReferenceNav.Generate<DocSite>()),
+                ];
+            }
             """,
     };
 }

@@ -2,7 +2,8 @@
 
 @if (_typeInfo is not null)
 {
-    <Breadcrumb Section="api" PageName="@_typeInfo.Name" />
+    <Breadcrumb Section="api" PageName="@_typeInfo.Name"
+                ExamplesUrl="@_examplesUrl" />
     <ApiDoc TypeInfo="@_typeInfo" />
 }
 else

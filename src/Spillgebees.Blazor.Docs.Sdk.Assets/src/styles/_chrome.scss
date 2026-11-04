@@ -12,9 +12,19 @@
   gap: var(--docs-space-5);
   height: var(--docs-topbar-height);
   padding: 0 var(--docs-space-6);
-  background: color-mix(in srgb, var(--docs-bg) 80%, transparent);
-  backdrop-filter: saturate(1.3) blur(12px);
   border-bottom: 1px solid var(--docs-line-soft);
+
+  // The blur lives on a pseudo-element: a backdrop-filter on the bar itself would
+  // make it the containing block for the menus' fixed click-away scrim, which
+  // would then only cover the bar.
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: color-mix(in srgb, var(--docs-bg) 80%, transparent);
+    backdrop-filter: saturate(1.3) blur(12px);
+  }
 
   &-spacer {
     flex: 1;
@@ -743,7 +753,6 @@
   .docs-topbar > .docs-version-select,
   .docs-topbar > .docs-theme-picker,
   .docs-topbar > .docs-theme-toggle,
-  .docs-topbar > .docs-github-link,
   .docs-topbar-spacer {
     display: none;
   }

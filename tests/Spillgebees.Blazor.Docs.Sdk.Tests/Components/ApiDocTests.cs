@@ -1,4 +1,6 @@
 using AwesomeAssertions;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Spillgebees.Blazor.Docs.Sdk;
 
 namespace Spillgebees.Blazor.Docs.Sdk.Tests.Components;
@@ -110,6 +112,23 @@ public class ApiDocTests
 
         // assert
         cut.Markup.Should().Contain("Spillgebees.Blazor.Map");
+    }
+
+    [Test]
+    public void Should_link_a_property_to_its_anchor_on_the_current_page()
+    {
+        // arrange
+        using var ctx = CreateContext();
+        ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("api/SgbMap?theme=refined#member-Other");
+
+        // act
+        var cut = ctx.Render<ApiDoc>(parameters => parameters.Add(p => p.TypeInfo, CreateTestType()));
+
+        // assert
+        cut.Find("a.docs-api-name")
+            .GetAttribute("href")
+            .Should()
+            .Be("http://localhost/api/SgbMap?theme=refined#member-Center");
     }
 
     [Test]
